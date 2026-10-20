@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+staticfiles/
+.vercel/
+# Customer buying theses are confidential; keep them out of the repo.
+demo/
+.DS_Store
+# Seed commands hold real customer thesis content; keep local.
+pipeline/management/commands/seed_*.py

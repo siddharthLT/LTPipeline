@@ -1,0 +1,45 @@
+<form method="post" action="{{ action }}" novalidate class="editform">
+  <div class="modal__head">
+    <div>
+      <span class="eyebrow">Edit</span>
+      <h2 class="t-h2" id="edit-modal-title">{{ title }}</h2>
+    </div>
+    <button type="button" class="icon-btn icon-btn--sm" data-close-dialog aria-label="Close">
+      <svg class="ico ico-20" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+    </button>
+  </div>
+  <div class="modal__body">
+    {% if form.non_field_errors %}<p class="field-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
+    {% if form.rows %}
+      <p class="field-help">Tick each step that is done. Score adds 5% for steps 1&ndash;4 and 10% for steps 5&ndash;12.</p>
+      <div class="stage-edit">
+        {% for row in form.rows %}
+        <div class="stage-edit__row">
+          <label class="stage-edit__check">
+            {{ row.done }}
+            <span class="stage-edit__label"><span class="mono stage-edit__num">{{ row.num }}</span>{{ row.name }}</span>
+            <span class="tag tag--outline mono">{{ row.weight }}%</span>
+          </label>
+          <label class="sr-only" for="{{ row.why.id_for_label }}">Why: {{ row.name }}</label>
+          {{ row.why }}
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {% for field in form %}
+      <div>
+        <label class="field-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+        {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+  <div class="modal__foot">
+    {% if delete_url %}<button type="button" class="btn btn--quiet btn--danger" data-delete-url="{{ delete_url }}">Delete</button>{% endif %}
+    <span class="modal__spacer"></span>
+    <button type="button" class="btn btn--quiet" data-close-dialog>Cancel</button>
+    <button type="submit" class="btn btn--primary">{{ submit_label }}</button>
+  </div>
+</form>

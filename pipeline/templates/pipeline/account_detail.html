@@ -1,0 +1,226 @@
+{% extends "app.html" %}
+{% load pipeline_extras %}
+{% block title %}{{ account.name }} · Buying thesis{% endblock %}
+{% block page_class %}page--thesis{% endblock %}
+{% block content %}
+<a class="back link-btn" href="{% url 'pipeline:dashboard' %}">
+  <svg class="ico ico-16" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.75 8.25 12l6.25 6.25"/></svg>
+  Pipeline
+</a>
+
+<header class="thesis-head">
+  <span class="eyebrow">Buying thesis</span>
+  <h1 class="t-h1">{{ account.name }}</h1>
+  <div class="tags">
+    <span class="tag tag--type">{{ account.furthest_stage_name }}</span>
+    {% if account.deal_value %}<span class="tag mono">{{ account.deal_value }}</span>{% endif %}
+    <span class="tag mono">{{ account.score }}% score</span>
+    <span class="tag tag--outline mono">{{ account.domain }}</span>
+    {% if overdue_count %}<span class="tag tag--mark">{{ overdue_count }} overdue</span>{% endif %}
+  </div>
+</header>
+
+{# 1 · Company #}
+<section class="sec card" id="company">
+  <header class="sec__head">
+    <span class="sec__n mono">1</span><h2 class="t-h3">Company</h2>
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'company' %}" aria-label="Edit company">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    <p class="sec__company">{{ account.name }}</p>
+    <dl class="kv">
+      <dt>Domain</dt><dd class="mono">{{ account.domain }}</dd>
+      <dt>Deal value</dt><dd>{% if account.deal_value %}{{ account.deal_value }}{% else %}<span class="t-muted">Not set</span>{% endif %}</dd>
+    </dl>
+  </div>
+</section>
+
+{# 2 · Overview #}
+<section class="sec card" id="overview">
+  <header class="sec__head">
+    <span class="sec__n mono">2</span><h2 class="t-h3">What they do, service, and who they service</h2>
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'overview' %}" aria-label="Edit overview">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    <dl class="kv">
+      <dt>What they do</dt><dd>{{ account.what_they_do|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+      <dt>What they service</dt><dd>{{ account.what_they_service|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+      <dt>Who they service</dt><dd>{{ account.who_they_service|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+    </dl>
+  </div>
+</section>
+
+{# 3 · Profile #}
+<section class="sec card" id="profile">
+  <header class="sec__head">
+    <span class="sec__n mono">3</span><h2 class="t-h3">Modality, focus area, phase, geography</h2>
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'profile' %}" aria-label="Edit profile">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    <dl class="kv">
+      <dt>Modality</dt><dd>{{ account.modality|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+      <dt>Therapeutic focus</dt><dd>{{ account.therapeutic_focus|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+      <dt>Trial phase</dt><dd>{{ account.trial_phase|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+      <dt>Geography</dt><dd>{{ account.geography|linebreaksbr|default:'<span class="t-muted">Nothing added yet</span>' }}</dd>
+    </dl>
+  </div>
+</section>
+
+{# 4 · ICP #}
+<section class="sec card" id="icp">
+  <header class="sec__head">
+    <span class="sec__n mono">4</span><h2 class="t-h3">Their ICP</h2>
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'icp' %}" aria-label="Edit ICP">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    {% with items=account.icp|bullets %}
+      {% if items %}<ul class="pts">{% for i in items %}<li>{{ i }}</li>{% endfor %}</ul>{% else %}<p class="t-muted">Nothing added yet</p>{% endif %}
+    {% endwith %}
+    {% if account.icp_source %}<p class="note">Source: {{ account.icp_source }}</p>{% endif %}
+  </div>
+</section>
+
+{# 5 · Stage tracker and score #}
+<section class="sec card" id="stages">
+  <header class="sec__head">
+    <span class="sec__n mono">5</span><h2 class="t-h3">Stage tracker and score</h2>
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-stages data-edit-url="{% url 'pipeline:edit_section' account.pk 'stages' %}" aria-label="Edit stages">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    <div class="score">
+      <svg viewBox="0 0 180 180" width="168" height="168" role="img" aria-label="{{ account.score }}% score">
+        <circle cx="90" cy="90" r="70" fill="none" stroke="var(--surface-2)" stroke-width="16"/>
+        <circle cx="90" cy="90" r="70" fill="none" stroke="var(--teal)" stroke-width="16" stroke-linecap="round" stroke-dasharray="{{ score_dash }} {{ circumference }}" transform="rotate(-90 90 90)"/>
+        <text x="90" y="92" text-anchor="middle" font-family="Geist Mono, monospace" font-size="34" font-weight="500" fill="var(--ink)">{{ account.score }}%</text>
+        <text x="90" y="114" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" letter-spacing="1" fill="var(--ink-2)">OF 100%</text>
+      </svg>
+      <div class="score__text">
+        <p class="t-h3">Predictability score: {{ account.score }}%</p>
+        <p class="t-meta">Steps 1&ndash;4 weigh 5% each (20% total). Steps 5&ndash;12 weigh 10% each (80% total). Each done step adds its weight.</p>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="stage-table">
+        <thead><tr><th>#</th><th>Step</th><th>Weight</th><th>Status</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for r in stage_rows %}
+          <tr>
+            <td class="mono">{{ r.num }}</td>
+            <td>{{ r.name }}</td>
+            <td class="mono">{{ r.weight }}%</td>
+            <td>{% if r.done %}<span class="status">&#10003; Done</span>{% else %}<span class="t-muted">Not done</span>{% endif %}</td>
+            <td>{% if r.why %}{{ r.why|linebreaksbr }}{% else %}<span class="t-muted">&mdash;</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{# 6 · Meeting notes #}
+<section class="sec card" id="meetings">
+  <header class="sec__head">
+    <span class="sec__n mono">6</span><h2 class="t-h3">Meeting notes</h2>
+    <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'meeting' %}">{% include "partials/plus.html" %} Add meeting</button>
+  </header>
+  <div class="sec__body">
+    {% for m in meetings %}
+    <details class="meeting" id="meeting-{{ m.pk }}" {% if forloop.first %}open{% endif %}>
+      <summary>
+        <span class="meeting__title">{{ m.title }}</span>
+        {% if m.held_on %}<span class="mono t-meta">{{ m.held_on|date:"M j, Y" }}</span>{% endif %}
+        <button type="button" class="icon-btn icon-btn--sm meeting__edit" data-edit-url="{% url 'pipeline:item_edit' account.pk 'meeting' m.pk %}" aria-label="Edit meeting details">{% include "partials/pen.html" %}</button>
+      </summary>
+      <div class="meeting__body">
+        {% for key, label, text in m.parts %}
+        <div class="part">
+          <div class="part__head">
+            <span class="sec__n mono">{{ forloop.counter }}</span>
+            <h3 class="part__title">{{ label }}</h3>
+            <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:meeting_part' account.pk m.pk key %}" aria-label="Edit {{ label }}">{% include "partials/pen.html" %}</button>
+          </div>
+          {% with items=text|bullets %}
+            {% if items %}<ul class="pts">{% for i in items %}<li>{{ i }}</li>{% endfor %}</ul>{% else %}<p class="t-muted t-meta">Nothing added yet</p>{% endif %}
+          {% endwith %}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% empty %}
+    <p class="t-muted">No meetings logged yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{# 7 · Timeline and sent emails #}
+<section class="sec card" id="timeline">
+  <header class="sec__head">
+    <span class="sec__n mono">7</span><h2 class="t-h3">Timeline and sent emails</h2>
+    <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'event' %}">{% include "partials/plus.html" %} Add entry</button>
+  </header>
+  <div class="sec__body">
+    {% if events %}
+    <ul class="tl">
+      {% for e in events %}
+      <li>
+        <span class="tl__d mono">{{ e.date|date:"M j" }}</span>
+        <span class="tl__t mono">{{ e.get_kind_display }}</span>
+        <span class="tl__x">{{ e.text|linebreaksbr }}</span>
+        <button type="button" class="icon-btn icon-btn--sm tl__edit" data-edit-url="{% url 'pipeline:item_edit' account.pk 'event' e.pk %}" aria-label="Edit timeline entry">{% include "partials/pen.html" %}</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="t-muted">No timeline entries yet.</p>{% endif %}
+
+    <div class="subhead">
+      <h3 class="t-sm subhead__t">Sent emails</h3>
+      <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'email' %}">{% include "partials/plus.html" %} Add email</button>
+    </div>
+    {% for em in emails %}
+    <details class="email">
+      <summary>
+        <span class="mono email__d">{{ em.sent_on|date:"M j" }}</span>
+        <span class="email__s">{{ em.subject }}</span>
+        <button type="button" class="icon-btn icon-btn--sm email__edit" data-edit-url="{% url 'pipeline:item_edit' account.pk 'email' em.pk %}" aria-label="Edit email">{% include "partials/pen.html" %}</button>
+      </summary>
+      {% if em.recipients %}<p class="t-meta email__meta">{{ em.recipients }}</p>{% endif %}
+      {% if em.body %}<pre class="email__body">{{ em.body }}</pre>{% endif %}
+    </details>
+    {% empty %}<p class="t-muted t-meta">No emails logged yet.</p>{% endfor %}
+  </div>
+</section>
+
+{# 8 · Tasks #}
+<section class="sec card" id="tasks">
+  <header class="sec__head">
+    <span class="sec__n mono">8</span><h2 class="t-h3">Tasks and next actions</h2>
+    <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'task' %}">{% include "partials/plus.html" %} Add task</button>
+  </header>
+  <div class="sec__body">
+    {% if tasks %}
+    <ul class="tasks">
+      {% for t in tasks %}
+      <li class="task{% if t.done %} is-done{% endif %}">
+        <button type="button" class="task__check" role="checkbox" aria-checked="{% if t.done %}true{% else %}false{% endif %}"
+                data-toggle-url="{% url 'pipeline:task_toggle' account.pk t.pk %}" aria-label="Mark {{ t.title }} {% if t.done %}not done{% else %}done{% endif %}">
+          <span class="check-box">{% if t.done %}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% endif %}</span>
+        </button>
+        <span class="task__title">{{ t.title }}</span>
+        <span class="tag {% if t.kind == 'next_action' %}tag--type{% else %}tag--outline{% endif %}">{{ t.get_kind_display }}</span>
+        <span class="task__due mono{% if not t.done and t.due_date < today %} is-overdue{% endif %}">
+          {% if not t.done and t.due_date < today %}<span class="dot-orange" aria-hidden="true"></span>{% endif %}
+          Due {{ t.due_date|date:"M j, Y" }}
+        </span>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' account.pk 'task' t.pk %}" aria-label="Edit task">{% include "partials/pen.html" %}</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="t-muted">No tasks yet. Add the next action with a due date.</p>{% endif %}
+  </div>
+</section>
+
+<dialog class="modal modal--edit" id="edit-modal" aria-labelledby="edit-modal-title">
+  <div data-modal-slot></div>
+</dialog>
+{% endblock %}

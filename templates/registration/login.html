@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Log in · Lunartree{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth__card">
+    <div class="brand auth__brand">
+      <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="32" height="32">
+      <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+    </div>
+    <div class="auth__head">
+      <span class="eyebrow">Sign in</span>
+      <h1 class="t-display">Welcome back</h1>
+    </div>
+    <form method="post" class="auth__form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="field-error" role="alert">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+      <div>
+        <label class="field-label" for="{{ form.username.id_for_label }}">Email</label>
+        <input class="field__input field__input--plain" type="email" name="username" id="{{ form.username.id_for_label }}"
+               value="{{ form.username.value|default:'' }}" autocomplete="email" autofocus required
+               {% if form.errors %}aria-invalid="true"{% endif %}>
+      </div>
+      <div>
+        <label class="field-label" for="{{ form.password.id_for_label }}">Password</label>
+        <input class="field__input field__input--plain" type="password" name="password" id="{{ form.password.id_for_label }}"
+               autocomplete="current-password" required {% if form.errors %}aria-invalid="true"{% endif %}>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn--primary btn--block">Log in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

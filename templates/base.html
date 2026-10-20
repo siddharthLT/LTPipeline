@@ -1,0 +1,18 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Pipeline · Lunartree{% endblock %}</title>
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="icon" href="{% static 'img/mark.svg' %}" type="image/svg+xml">
+  <link rel="preload" href="{% static 'fonts/Geist-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% block body %}{% endblock %}
+<script src="{% static 'js/app.js' %}" defer></script>
+</body>
+</html>

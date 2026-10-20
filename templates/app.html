@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+{% block body %}
+<div class="shell">
+  <aside class="sidenav">
+    <a class="brand" href="{% url 'pipeline:dashboard' %}">
+      <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
+      <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+    </a>
+    <nav aria-label="Primary">
+      <a class="navitem" href="{% url 'pipeline:dashboard' %}" {% if nav == 'pipeline' %}aria-current="page"{% endif %}>
+        {% include "partials/icon_gantt.html" %}
+        Pipeline
+      </a>
+    </nav>
+    <div class="sidenav__foot">
+      <div class="who">
+        <span class="avatar avatar--sm">{{ user.email|slice:":1"|upper }}</span>
+        <span class="t-meta clamp-1">{{ user.email }}</span>
+      </div>
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--quiet btn--sm btn--block">Log out</button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="appbar" data-appbar>
+      <a class="brand" href="{% url 'pipeline:dashboard' %}">
+        <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
+        <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+      </a>
+      <form method="post" action="{% url 'accounts:logout' %}" class="appbar__end">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--quiet btn--sm">Log out</button>
+      </form>
+    </header>
+    <main id="main" class="page {% block page_class %}{% endblock %}">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
