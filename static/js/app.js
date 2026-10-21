@@ -88,10 +88,6 @@
     });
   }
 
-  if (location.hash === '#edit-stages') {
-    var b = document.querySelector('[data-edit-stages]');
-    if (b) { history.replaceState(null, '', location.pathname + '#stages'); b.click(); }
-  }
 })();
 
 // Dashboard: expand the summary row under an account.

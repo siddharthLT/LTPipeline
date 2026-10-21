@@ -10,26 +10,8 @@
   </div>
   <div class="modal__body">
     {% if form.non_field_errors %}<p class="field-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
-    {% if form.rows %}
-      <p class="field-help">Tick each step that is done. Score adds 5% for steps 1&ndash;4 and 10% for steps 5&ndash;12. A target date is optional: it replaces the predicted date for that step and moves the steps after it.</p>
-      <div class="stage-edit">
-        {% for row in form.rows %}
-        <div class="stage-edit__row">
-          <label class="stage-edit__check">
-            {{ row.done }}
-            <span class="stage-edit__label"><span class="mono stage-edit__num">{{ row.num }}</span>{{ row.name }}</span>
-            <span class="tag tag--outline mono">{{ row.weight }}%</span>
-          </label>
-          <label class="sr-only" for="{{ row.why.id_for_label }}">Why: {{ row.name }}</label>
-          {{ row.why }}
-          <div class="stage-edit__target">
-            <label class="field-label" for="{{ row.target.id_for_label }}">Target date</label>
-            {{ row.target }}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    {% else %}
+    {% if form.intro %}<p class="field-help">{{ form.intro }}</p>{% endif %}
+    {% if True %}
       {% for field in form %}
       {% if field.field.widget.input_type == 'checkbox' %}
       <div>

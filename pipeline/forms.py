@@ -3,7 +3,7 @@ import re
 from django import forms
 
 from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent, UsageStage, normalize_domain
-from .stages import STAGES, STAGE_WEIGHTS
+from .stages import CRITERIA
 
 DOMAIN_RE = re.compile(r'^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
 
@@ -93,34 +93,32 @@ class DateInput(forms.DateInput):
         super().__init__(format='%Y-%m-%d', **kw)
 
 
-class StageForm(StyledMixin, forms.Form):
-    """Done flag and reasoning for each of the 12 steps."""
+class StageEditForm(StyledMixin, forms.Form):
+    """One step: tick the criteria that are met. The step is done when every criterion is met."""
 
-    def __init__(self, account, *args, **kwargs):
-        self.account = account
+    def __init__(self, account, num, *args, **kwargs):
+        self.progress = account.stage_progress.get(stage=num)
         super().__init__(*args, **kwargs)
-        existing = {r['num']: r for r in account.stage_rows()}
-        for num, name in STAGES:
-            self.fields[f'done_{num}'] = forms.BooleanField(required=False, initial=existing[num]['done'], label=name)
-            self.fields[f'target_{num}'] = forms.DateField(
-                required=False, initial=existing[num]['target_date'], label=f'Target date: {name}', widget=DateInput())
-            self.fields[f'why_{num}'] = forms.CharField(
-                required=False, initial=existing[num]['why'], label=f'Why: {name}',
-                widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Evidence for this status'}),
-            )
+        met = set(self.progress.criteria)
+        for key, label in CRITERIA[num]:
+            self.fields[f'c_{key}'] = forms.BooleanField(required=False, initial=key in met, label=label)
+        self.fields['why'] = forms.CharField(
+            required=False, initial=self.progress.why, label='Evidence',
+            widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'What shows these criteria are met, or what is missing'}))
+        self.fields['target_date'] = forms.DateField(
+            required=False, initial=self.progress.target_date, label='Target date (optional)', widget=DateInput())
+        self.num = num
+        self.intro = f'Done when all {len(CRITERIA[num])} criteria are met. A target date replaces the predicted date and moves the steps after it.'
         self._style()
-        self.rows = [
-            {'num': num, 'name': name, 'weight': STAGE_WEIGHTS[num], 'done': self[f'done_{num}'], 'why': self[f'why_{num}'],
-             'target': self[f'target_{num}']}
-            for num, name in STAGES
-        ]
 
     def save(self):
-        for p in self.account.stage_progress.all():
-            p.done = self.cleaned_data[f'done_{p.stage}']
-            p.why = self.cleaned_data[f'why_{p.stage}'].strip()
-            p.target_date = self.cleaned_data[f'target_{p.stage}']
-            p.save(update_fields=['done', 'why', 'target_date'])
+        p = self.progress
+        p.criteria = [k for k, _ in CRITERIA[self.num] if self.cleaned_data[f'c_{k}']]
+        p.done = len(p.criteria) == len(CRITERIA[self.num])
+        p.why = self.cleaned_data['why'].strip()
+        p.target_date = self.cleaned_data['target_date']
+        p.save(update_fields=['criteria', 'done', 'why', 'target_date'])
+        return p
 
 
 class MeetingForm(StyledModelForm):

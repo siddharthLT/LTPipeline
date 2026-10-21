@@ -7,9 +7,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (SNAPSHOT_FORMS, AccountForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
-                    ProfileForm, StageForm, TaskForm, UsageStageForm, meeting_part_form)
+                    ProfileForm, StageEditForm, TaskForm, UsageStageForm, meeting_part_form)
 from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
-from .stages import STAGES
+from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
 SECTIONS = {
     'company': (CompanyForm, 'Company', 'company'),
@@ -96,9 +96,6 @@ def _form_response(request, form, title, saved_anchor, delete_url=None, submit_l
 @require_http_methods(['GET', 'POST'])
 def edit_section(request, pk, section):
     account = get_object_or_404(Account, pk=pk)
-    if section == 'stages':
-        form = StageForm(account, request.POST or None)
-        return _form_response(request, form, 'Stage tracker and score', 'stages')
     if section in SNAPSHOT_FORMS:
         form_class, title, anchor = SNAPSHOT_FORMS[section]
         return _form_response(request, form_class(request.POST or None, instance=account), title, anchor)
@@ -172,12 +169,13 @@ FLAGS = ('usage_tried', 'usage_value', 'usage_onboarded', 'integration_started')
 
 
 @login_required
-@require_POST
-def toggle_stage(request, pk, num):
-    row = get_object_or_404(StageProgress, account_id=pk, stage=num)
-    row.done = not row.done
-    row.save(update_fields=['done'])
-    return JsonResponse({'ok': True, 'anchor': 'timeline-strip'})
+@require_http_methods(['GET', 'POST'])
+def edit_stage(request, pk, num):
+    account = get_object_or_404(Account, pk=pk)
+    if num not in STAGE_NAMES:
+        return JsonResponse({'error': 'unknown step'}, status=404)
+    form = StageEditForm(account, num, request.POST or None)
+    return _form_response(request, form, f'Step {num}: {STAGE_NAMES[num]}', 'timeline-strip')
 
 
 @login_required
@@ -189,3 +187,13 @@ def toggle_flag(request, pk, flag):
     setattr(account, flag, not getattr(account, flag))
     account.save(update_fields=[flag])
     return JsonResponse({'ok': True, 'anchor': 'path-block'})
+
+
+@login_required
+def rules(request):
+    stages = [{'num': n, 'name': name, 'weight': STAGE_WEIGHTS[n], 'days': STAGE_DAYS[n],
+               'criteria': [label for _, label in CRITERIA[n]]} for n, name in STAGES]
+    return render(request, 'pipeline/rules.html', {
+        'stages': stages, 'path': PATH, 'usage_checks': [label for _, label in USAGE_CHECKS],
+        'total_days': sum(STAGE_DAYS.values()), 'nav': 'rules',
+    })

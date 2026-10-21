@@ -43,12 +43,12 @@
               <span class="gantt__co clamp-1">{{ account.name }}</span>
               <span class="gantt__dom mono clamp-1">{{ account.domain }}</span>
             </a>
-            <a class="icon-btn icon-btn--sm gantt__edit" href="{% url 'pipeline:account_detail' account.pk %}#edit-stages" aria-label="Update stages for {{ account.name }}">{% include "partials/pen.html" %}</a>
+            <a class="icon-btn icon-btn--sm gantt__edit" href="{% url 'pipeline:account_detail' account.pk %}#stages" aria-label="Update stages for {{ account.name }}">{% include "partials/pen.html" %}</a>
           </th>
           {% for c in account.cells %}
           <td class="gantt__cell">
             {% if c.state %}
-              <span class="bar-seg bar-seg--{{ c.state }}{% if c.cap_l %} cap-l{% endif %}{% if c.cap_r %} cap-r{% endif %}"><span class="sr-only">{{ c.name }}: {% if c.state == 'now' %}furthest step reached{% else %}done{% endif %}</span></span>
+              <span class="bar-seg bar-seg--{{ c.state }}{% if c.cap_l %} cap-l{% endif %}{% if c.cap_r %} cap-r{% endif %}"><span class="sr-only">{{ c.name }}: {% if c.state == 'now' %}furthest step reached{% elif c.state == 'part' %}in progress{% else %}done{% endif %}</span></span>
             {% endif %}
           </td>
           {% endfor %}
@@ -91,6 +91,7 @@
   <div class="gantt__legend">
     <span class="legend"><i class="swatch swatch--done"></i> Step done</span>
     <span class="legend"><i class="swatch swatch--now"></i> Furthest step reached</span>
+    <span class="legend"><i class="swatch swatch--part"></i> In progress (some criteria met)</span>
     <span class="legend t-meta">Open the arrow beside an account for its summary.</span>
   </div>
 </section>

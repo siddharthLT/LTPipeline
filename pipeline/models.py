@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from django.db import models
 
-from .stages import PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
+from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
 
 def normalize_domain(value):
@@ -114,10 +114,13 @@ class Account(models.Model):
         rows = []
         for num, name in STAGES:
             p = by_stage.get(num)
+            met = set(p.criteria) if p else set()
+            crit = [{'key': k, 'label': label, 'met': k in met} for k, label in CRITERIA[num]]
             rows.append({
                 'num': num, 'name': name, 'weight': STAGE_WEIGHTS[num],
                 'done': bool(p and p.done), 'why': p.why if p else '',
                 'target_date': p.target_date if p else None,
+                'criteria': crit, 'met': sum(c['met'] for c in crit), 'total': len(crit),
             })
         return rows
 
@@ -137,7 +140,8 @@ class Account(models.Model):
         for num, name in STAGES:
             r = rows[num]
             item = {'num': num, 'name': name, 'done': r['done'], 'date': None, 'override': False,
-                    'gap': False, 'days': STAGE_DAYS[num], 'overdue': False}
+                    'gap': False, 'days': STAGE_DAYS[num], 'overdue': False,
+                    'met': r['met'], 'total': r['total']}
             if not r['done']:
                 target = r['target_date']
                 if num < furthest:
@@ -217,9 +221,12 @@ class Account(models.Model):
     def gantt_cells(self):
         done = self.done_stages
         furthest = max(done, default=0)
+        started = {r['num'] for r in self.stage_rows() if r['met'] and not r['done']}
         cells = []
         for num, name in STAGES:
-            if num in done:
+            if num in started:
+                cells.append({'num': num, 'name': name, 'state': 'part'})
+            elif num in done:
                 cells.append({
                     'num': num, 'name': name,
                     'state': 'now' if num == furthest else 'done',
@@ -234,8 +241,9 @@ class StageProgress(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='stage_progress')
     stage = models.PositiveSmallIntegerField()
     done = models.BooleanField(default=False)
-    why = models.TextField(blank=True)
+    why = models.TextField(blank=True, help_text='Evidence for the criteria')
     target_date = models.DateField(null=True, blank=True)
+    criteria = models.JSONField(default=list, blank=True, help_text='Keys of the criteria that are met')
 
     class Meta:
         ordering = ['stage']

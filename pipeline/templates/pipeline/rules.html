@@ -1,0 +1,79 @@
+{% extends "app.html" %}
+{% block title %}Scoring rules · Lunartree{% endblock %}
+{% block page_class %}page--thesis{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Scoring rules</span>
+  <h1 class="t-h1">How stages, score, dates and path are decided</h1>
+  <p class="t-meta">Everything on the dashboard and the account pages follows from the rules on this page. Nothing is estimated by hand or generated: the same facts always give the same result. The only judgement is whether a criterion is met, and each one is a yes/no fact you can point to in an email, a call or the product.</p>
+</header>
+
+<section class="sec card">
+  <header class="sec__head"><span class="sec__n mono">1</span><h2 class="t-h3">A step is done when every criterion is met</h2></header>
+  <div class="sec__body">
+    <p>Open a step on an account (click it in the timeline, or the pen in the stage table) and tick the criteria that are met. When all are ticked, the step is done. Notes in the Evidence box record why, but they never change the status.</p>
+    <div class="table-scroll">
+      <table class="rules-table">
+        <thead><tr><th>#</th><th>Step</th><th>Weight</th><th>Typical days</th><th>Done when all of these are true</th></tr></thead>
+        <tbody>
+        {% for s in stages %}
+          <tr>
+            <td class="mono">{{ s.num }}</td><td>{{ s.name }}</td><td class="mono">{{ s.weight }}%</td><td class="mono">{{ s.days }}</td>
+            <td><ul>{% for c in s.criteria %}<li>{{ c }}</li>{% endfor %}</ul></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="sec card">
+  <header class="sec__head"><span class="sec__n mono">2</span><h2 class="t-h3">Probability of closing</h2></header>
+  <div class="sec__body">
+    <p class="formula">probability = sum of the weights of the steps that are done
+steps 1-4 are 5% each (20%), steps 5-12 are 10% each (80%)</p>
+    <p>A step counts in full or not at all. Steps are not forced into order: a step can be done while an earlier one is open, and the open earlier step is then shown as a gap. The dashed outline on the dashboard means some criteria are met and the step is not done yet. It adds nothing to the score.</p>
+  </div>
+</section>
+
+<section class="sec card">
+  <header class="sec__head"><span class="sec__n mono">3</span><h2 class="t-h3">Predicted dates</h2></header>
+  <div class="sec__body">
+    <p class="formula">current stage  = the furthest step that is done
+next stage     = the first open step after it
+date of a step = today + typical days of every open step up to and including it
+gap step       = an open step before the furthest one: today + its own typical days (assumed to run in parallel)
+target date    = if you set one on a step, it replaces that step's date and the steps after it count on from it</p>
+    <p>With nothing done, the typical days add up to {{ total_days }} days to a signed contract. These lengths are starting assumptions. They are in one place in the code, so changing them changes every account the same way.</p>
+  </div>
+</section>
+
+<section class="sec card">
+  <header class="sec__head"><span class="sec__n mono">4</span><h2 class="t-h3">Path: demo, usage, pilot, annual, expansion</h2></header>
+  <div class="sec__body">
+    <div class="table-scroll">
+      <table class="rules-table">
+        <thead><tr><th>Path step</th><th>Progress is</th></tr></thead>
+        <tbody>
+          <tr><td>Demo</td><td>Full once step 8 is done. Before that, the share of the weight of steps 1-7 that is done.</td></tr>
+          <tr><td>Real usage</td><td>How many of the three usage checks are true, out of 3. A done pilot (step 10, 11 or 12) counts all three as met.
+            <ul>{% for u in usage_checks %}<li>{{ u }}</li>{% endfor %}</ul></td></tr>
+          <tr><td>Pilot / design deployment</td><td>Steps 10 and 11, half each.</td></tr>
+          <tr><td>Annual contract</td><td>Step 12.</td></tr>
+          <tr><td>Integration / expansion</td><td>The "integration or expansion started" check.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="formula">path % = average of the five progress values</p>
+    <p>The usage checks are the one part set by hand, because the app has no product usage data yet. Everything else comes from the steps.</p>
+  </div>
+</section>
+
+<section class="sec card">
+  <header class="sec__head"><span class="sec__n mono">5</span><h2 class="t-h3">Commercial path dates and values</h2></header>
+  <div class="sec__body">
+    <p>The pilot date is the predicted date of step 10 and the annual date is the predicted date of step 12, unless you type a date on the commercial path. Values are what you enter. Nothing about money is calculated.</p>
+  </div>
+</section>
+{% endblock %}

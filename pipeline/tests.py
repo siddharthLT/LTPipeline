@@ -64,7 +64,9 @@ class ScoreTests(Base):
         self.assertEqual(acct.furthest_stage_name, 'Demo')
 
     def test_all_done_is_100(self):
-        self.account.stage_progress.update(done=True)
+        for p in self.account.stage_progress.all():
+            p.done = True
+            p.save()
         self.assertEqual(Account.objects.get(pk=self.account.pk).score, 100)
 
 
@@ -98,17 +100,24 @@ class ThesisTests(Base):
         self.assertEqual(self.post(url, {'name': 'X', 'domain': 'onesource.com'}).status_code, 200)
         self.assertEqual(self.post(url, {'name': 'X', 'domain': 'other.io'}).status_code, 400)
 
-    def test_edit_stages_updates_score(self):
-        data = {}
-        for n in (1, 2, 3, 8):
-            data[f'done_{n}'] = 'on'
-            data[f'why_{n}'] = f'evidence {n}'
-        r = self.post(reverse('pipeline:edit_section', args=[self.account.pk, 'stages']), data)
-        self.assertEqual(r.status_code, 200)
+    def test_step_is_done_only_when_all_criteria_are_met(self):
+        from .stages import CRITERIA
+        url = reverse('pipeline:stage_edit', args=[self.account.pk, 4])
+        keys = [k for k, _ in CRITERIA[4]]
+        partial = {f'c_{k}': 'on' for k in keys[:-1]}
+        partial['why'] = 'evidence'
+        self.assertEqual(self.post(url, partial).status_code, 200)
         a = Account.objects.get(pk=self.account.pk)
-        self.assertEqual(a.score, 25)
-        self.assertEqual(a.stage_progress.get(stage=8).why, 'evidence 8')
-        self.assertContains(self.client.get(reverse('pipeline:account_detail', args=[a.pk])), '25% score')
+        self.assertEqual(a.score, 0)
+        row = [r for r in a.stage_rows() if r['num'] == 4][0]
+        self.assertEqual((row['met'], row['total'], row['done']), (len(keys) - 1, len(keys), False))
+        self.assertEqual(a.gantt_cells()[3]['state'], 'part')
+        self.assertEqual(self.post(url, {f'c_{k}': 'on' for k in keys}).status_code, 200)
+        a = Account.objects.get(pk=self.account.pk)
+        self.assertEqual(a.score, 5)
+        self.assertEqual(a.gantt_cells()[3]['state'], 'now')
+        self.post(url, {f'c_{keys[0]}': 'on'})  # untick two criteria: done again becomes false
+        self.assertEqual(Account.objects.get(pk=self.account.pk).score, 0)
 
     def test_tasks_crud_and_toggle(self):
         pk = self.account.pk
@@ -162,7 +171,10 @@ class SnapshotTests(TestCase):
         self.a = Account.objects.create(name='Acme', domain='acme.com')
 
     def tick(self, *nums):
-        self.a.stage_progress.filter(stage__in=nums).update(done=True)
+        from .stages import CRITERIA
+        for p in self.a.stage_progress.filter(stage__in=nums):
+            p.done, p.criteria = True, [k for k, _ in CRITERIA[p.stage]]
+            p.save()
 
     def test_schedule_runs_open_steps_in_order_and_flags_gaps(self):
         import datetime as dt
@@ -211,7 +223,7 @@ class SnapshotTests(TestCase):
         r = self.client.get(reverse('pipeline:account_detail', args=[self.a.pk]))
         self.assertContains(r, 'Deal snapshot')
         self.assertContains(r, 'Buying thesis in short')
-        for section in ['people', 'move', 'next', 'usage', 'why', 'first', 'before', 'expand', 'commercial', 'whynot', 'stages']:
+        for section in ['people', 'move', 'next', 'usage', 'why', 'first', 'before', 'expand', 'commercial', 'whynot']:
             self.assertEqual(self.client.get(reverse('pipeline:edit_section', args=[self.a.pk, section])).status_code, 200, section)
         r = self.client.post(reverse('pipeline:edit_section', args=[self.a.pk, 'next']),
                              {'next_action': 'Send deck', 'next_action_owner': 'Sid', 'next_action_date': '2026-11-02'})
@@ -237,13 +249,12 @@ class SnapshotTests(TestCase):
 
 
 class InlineToggleTests(SnapshotTests):
-    def test_stage_chip_toggles_and_updates_score_and_path(self):
-        url = reverse('pipeline:stage_toggle', args=[self.a.pk, 8])
-        self.assertEqual(self.client.post(url).json()['anchor'], 'timeline-strip')
-        self.assertEqual(Account.objects.get(pk=self.a.pk).score, 10)
-        self.assertIn(8, Account.objects.get(pk=self.a.pk).done_stages)
-        self.client.post(url)
-        self.assertEqual(Account.objects.get(pk=self.a.pk).score, 0)
+    def test_stage_modal_renders_and_rules_page(self):
+        self.assertEqual(self.client.get(reverse('pipeline:stage_edit', args=[self.a.pk, 8])).status_code, 200)
+        self.assertEqual(self.client.get(reverse('pipeline:stage_edit', args=[self.a.pk, 99])).status_code, 404)
+        r = self.client.get(reverse('pipeline:rules'))
+        self.assertContains(r, 'Done when all of these are true')
+        self.assertContains(r, 'Contract signed')
 
     def test_usage_flag_toggle_and_validation(self):
         url = reverse('pipeline:flag_toggle', args=[self.a.pk, 'usage_tried'])

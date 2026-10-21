@@ -6,11 +6,12 @@ app_name = 'pipeline'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('rules/', views.rules, name='rules'),
     path('playbook/', views.playbook, name='playbook'),
     path('playbook/<int:pk>/edit/', views.edit_usage_stage, name='edit_usage_stage'),
     path('accounts/<int:pk>/', views.account_detail, name='account_detail'),
     path('accounts/<int:pk>/edit/<slug:section>/', views.edit_section, name='edit_section'),
-    path('accounts/<int:pk>/stage/<int:num>/toggle/', views.toggle_stage, name='stage_toggle'),
+    path('accounts/<int:pk>/stage/<int:num>/edit/', views.edit_stage, name='stage_edit'),
     path('accounts/<int:pk>/flag/<slug:flag>/toggle/', views.toggle_flag, name='flag_toggle'),
     path('accounts/<int:pk>/task/<int:item_id>/toggle/', views.toggle_task, name='task_toggle'),
     path('accounts/<int:pk>/meeting/<int:meeting_id>/part/<slug:part>/', views.edit_meeting_part, name='meeting_part'),

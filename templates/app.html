@@ -16,6 +16,10 @@
         <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L20 7"/></svg>
         Usage playbook
       </a>
+      <a class="navitem" href="{% url 'pipeline:rules' %}" {% if nav == 'rules' %}aria-current="page"{% endif %}>
+        <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5.5h14M5 12h14M5 18.5h8"/></svg>
+        Scoring rules
+      </a>
     </nav>
     <div class="sidenav__foot">
       <div class="who">

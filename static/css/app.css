@@ -260,9 +260,7 @@ th.gantt__acct.gantt__head { padding-left: var(--s-4) !important; }
 .tstrip__item { border: 1px solid var(--line); border-radius: var(--r-sm); position: relative; min-height: 76px; }
 .tstrip__btn { display: grid; gap: 2px; align-content: start; width: 100%; height: 100%; min-height: 74px; padding: 8px 10px; text-align: left; border-radius: inherit; cursor: pointer; }
 .tstrip__btn:hover { background: color-mix(in srgb, var(--teal) 8%, transparent); }
-.tstrip__box { position: absolute; right: 8px; bottom: 8px; width: 16px; height: 16px; border: 1.5px solid var(--ink-ctl); border-radius: 4px; display: grid; place-items: center; font-size: 10px; color: var(--on-fill); background: #fff; }
-.tstrip__item.is-done .tstrip__box { background: var(--teal-deep); border-color: var(--teal-deep); }
-.tstrip__n { font-size: var(--fs-micro); color: var(--ink-2); }
+.tstrip__item.is-done .tstrip__n { font-size: var(--fs-micro); color: var(--ink-2); }
 .tstrip__name { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
 .tstrip__date { font-size: var(--fs-label); color: var(--ink-2); margin-top: auto; }
 .tstrip__item.is-done { background: var(--teal-200); border-color: var(--teal-200); }
@@ -315,3 +313,19 @@ th.gantt__acct.gantt__head { padding-left: var(--s-4) !important; }
 .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
 .gates li { display: flex; align-items: flex-start; gap: var(--s-3); }
 .gates .tag { flex: none; margin-top: 1px; }
+
+.tstrip__prog { position: absolute; right: 10px; bottom: 8px; font-size: var(--fs-micro); color: var(--ink-2); }
+.tstrip__prog.is-part { color: var(--teal-deep); font-weight: 600; }
+.tstrip__item.is-done .tstrip__prog { color: var(--teal-deep); }
+.status--part { color: var(--teal-deep); font-weight: 500; }
+.checks__box { margin-top: 2px; }
+.checks__box svg { display: block; }
+/* gantt: step started but not all criteria met */
+.bar-seg--part { left: 8px; right: 8px; border: 1.5px dashed var(--teal); border-radius: 9px; background: transparent; }
+.swatch--part { background: transparent; border: 1.5px dashed var(--teal); box-sizing: border-box; }
+.rules-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-sm); min-width: 640px; }
+.rules-table th { text-align: left; font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.rules-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rules-table tr:last-child td { border-bottom: 0; }
+.rules-table ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.formula { font-family: var(--font-mono); font-size: var(--fs-label); background: var(--surface-2); border-radius: var(--r-sm); padding: var(--s-3) var(--s-4); white-space: pre-wrap; }
