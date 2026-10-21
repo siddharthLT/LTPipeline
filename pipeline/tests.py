@@ -152,3 +152,85 @@ class ThesisTests(Base):
         self.client.logout()
         r = self.client.get(reverse('pipeline:account_detail', args=[self.account.pk]))
         self.assertEqual(r.status_code, 302)
+
+
+class SnapshotTests(TestCase):
+    def setUp(self):
+        from accounts.models import User
+        self.user = User.objects.create_user(email='t@lunartree.bio', password='x-pass-123')
+        self.client.force_login(self.user)
+        self.a = Account.objects.create(name='Acme', domain='acme.com')
+
+    def tick(self, *nums):
+        self.a.stage_progress.filter(stage__in=nums).update(done=True)
+
+    def test_schedule_runs_open_steps_in_order_and_flags_gaps(self):
+        import datetime as dt
+        from .stages import STAGE_DAYS
+        self.tick(1, 2, 3, 8)
+        today = dt.date(2026, 10, 20)
+        s = {r['num']: r for r in self.a.schedule(today)}
+        self.assertTrue(s[1]['done'] and s[8]['done'])
+        self.assertTrue(s[4]['gap'] and s[7]['gap'])
+        self.assertEqual(s[4]['date'], today + dt.timedelta(days=STAGE_DAYS[4]))
+        self.assertEqual(s[9]['date'], today + dt.timedelta(days=STAGE_DAYS[9]))
+        self.assertEqual(s[10]['date'], s[9]['date'] + dt.timedelta(days=STAGE_DAYS[10]))
+        self.assertEqual(self.a.next_stage['num'], 9)
+
+    def test_target_date_overrides_and_moves_later_steps(self):
+        import datetime as dt
+        from .stages import STAGE_DAYS
+        self.tick(1, 2, 3)
+        self.a.stage_progress.filter(stage=5).update(target_date=dt.date(2027, 1, 10))
+        s = {r['num']: r for r in self.a.schedule(dt.date(2026, 10, 20))}
+        self.assertEqual(s[5]['date'], dt.date(2027, 1, 10))
+        self.assertTrue(s[5]['override'])
+        self.assertEqual(s[6]['date'], dt.date(2027, 1, 10) + dt.timedelta(days=STAGE_DAYS[6]))
+
+    def test_path_updates_with_stages(self):
+        self.assertEqual(self.a.path_pct, 0)
+        self.tick(1, 2, 3, 4, 5, 6, 7, 8)
+        p = self.a.path_steps()
+        self.assertEqual(p[0]['state'], 'done')
+        self.assertEqual(p[1]['state'], 'now')
+        self.tick(10)
+        p = self.a.path_steps()
+        self.assertEqual(p[1]['state'], 'done')  # a done pilot implies the usage checks
+        self.assertEqual(p[2]['pct'], 50)
+        self.tick(11, 12)
+        self.assertEqual(self.a.path_steps()[3]['state'], 'done')
+
+    def test_usage_flags_drive_real_usage(self):
+        self.a.usage_tried = True
+        self.a.save()
+        self.assertEqual(self.a.path_steps()[1]['pct'], 33)
+
+    def test_pages_and_edit_forms_render_and_save(self):
+        r = self.client.get(reverse('pipeline:dashboard'))
+        self.assertContains(r, 'scorechip')
+        r = self.client.get(reverse('pipeline:account_detail', args=[self.a.pk]))
+        self.assertContains(r, 'Deal snapshot')
+        self.assertContains(r, 'Buying thesis in short')
+        for section in ['people', 'move', 'next', 'usage', 'why', 'first', 'before', 'expand', 'commercial', 'whynot', 'stages']:
+            self.assertEqual(self.client.get(reverse('pipeline:edit_section', args=[self.a.pk, section])).status_code, 200, section)
+        r = self.client.post(reverse('pipeline:edit_section', args=[self.a.pk, 'next']),
+                             {'next_action': 'Send deck', 'next_action_owner': 'Sid', 'next_action_date': '2026-11-02'})
+        self.assertEqual(r.status_code, 200)
+        self.a.refresh_from_db()
+        self.assertEqual((self.a.next_action, self.a.next_action_owner), ('Send deck', 'Sid'))
+
+    def test_playbook_is_seeded_and_editable(self):
+        from .models import UsageStage
+        self.assertEqual(UsageStage.objects.count(), 5)
+        r = self.client.get(reverse('pipeline:playbook'))
+        self.assertContains(r, 'What healthy usage looks like')
+        st = UsageStage.objects.first()
+        r = self.client.post(reverse('pipeline:edit_usage_stage', args=[st.pk]),
+                             {'name': 'Activated', 'window': 'First 3 days', 'healthy': 'x', 'credits': 'y', 'moves_on': 'z', 'gate': 'Gate: q'})
+        self.assertEqual(r.status_code, 200)
+        st.refresh_from_db()
+        self.assertEqual(st.window, 'First 3 days')
+
+    def test_login_required(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse('pipeline:playbook')).status_code, 302)

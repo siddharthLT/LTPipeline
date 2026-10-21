@@ -20,6 +20,174 @@
   </div>
 </header>
 
+{# ===== Deal snapshot ===== #}
+<section class="sec card snapshot" id="deal">
+  <header class="sec__head">
+    <h2 class="t-h3">Deal snapshot</h2>
+    <span class="t-meta">Where this deal stands today</span>
+  </header>
+  <div class="sec__body">
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi__k">Current pipeline stage</span>
+        <span class="kpi__v">{{ account.furthest_stage_name }}</span>
+        <span class="kpi__s mono">Step {{ account.furthest_stage }} of 12</span>
+      </div>
+      <div class="kpi kpi--donut">
+        {% include "partials/donut.html" with pct=account.score arc=account.score_arc size=64 %}
+        <div>
+          <span class="kpi__k">Probability of closing</span>
+          <span class="kpi__v mono">{{ account.score }}%</span>
+          <span class="kpi__s">From the stage score below</span>
+        </div>
+      </div>
+      <div class="kpi">
+        <span class="kpi__k">Realistic timeline</span>
+        <span class="kpi__v kpi__v--sm">{% if next_stage %}{{ next_stage.name }} by <span class="mono">{{ next_stage.date|date:"M j" }}</span>{% else %}No open step ahead{% endif %}</span>
+        <span class="kpi__s mono">{% if contract.done %}Contract signed{% else %}Contract by {{ contract.date|date:"M j, Y" }}{% endif %}</span>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block__head">
+        <h3 class="block__t">Predicted timeline to contract</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'stages' %}" aria-label="Edit stages and target dates">{% include "partials/pen.html" %}</button>
+      </div>
+      <ol class="tstrip">
+        {% for s in schedule %}
+        <li class="tstrip__item{% if s.done %} is-done{% elif s.gap %} is-gap{% endif %}{% if next_stage and s.num == next_stage.num %} is-next{% endif %}">
+          <span class="tstrip__n mono">{{ s.num }}</span>
+          <span class="tstrip__name">{{ s.name }}</span>
+          <span class="tstrip__date mono">{% if s.done %}&#10003; Done{% else %}{{ s.date|date:"M j" }}{% if s.override %}<abbr title="Target date you set"> *</abbr>{% endif %}{% endif %}</span>
+          {% if s.gap and not s.done %}<span class="tstrip__tag">Gap</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="note">Dates are predicted from today using typical step lengths. Open steps behind your furthest step are shown as gaps. A <span class="mono">*</span> marks a target date you set.</p>
+    </div>
+
+    <div class="block">
+      <div class="block__head">
+        <h3 class="block__t">Path: demo &rarr; usage &rarr; pilot &rarr; annual &rarr; expansion <span class="mono block__pct">{{ path_pct }}%</span></h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'usage' %}" aria-label="Edit usage checks">{% include "partials/pen.html" %}</button>
+      </div>
+      {% include "partials/pathbar.html" with path=path labels=True %}
+      <ul class="checks">
+        {% for key, label, ok in path.1.checks %}
+        <li class="{% if ok %}is-ok{% endif %}"><span class="checks__box" aria-hidden="true">{% if ok %}&#10003;{% endif %}</span>{{ label }}</li>
+        {% endfor %}
+      </ul>
+      <p class="note">Updates as you tick the 12 steps. Demo follows steps 1&ndash;8, pilot follows steps 10&ndash;11 and the contract follows step 12. A done pilot counts all usage checks as met.</p>
+    </div>
+
+    <div class="twocol">
+      <div class="block">
+        <div class="block__head">
+          <h3 class="block__t">Buyer, users and blockers</h3>
+          <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'people' %}" aria-label="Edit people">{% include "partials/pen.html" %}</button>
+        </div>
+        <dl class="people">
+          <dt>Buyer</dt><dd>{% with i=account.buyer|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<span class="t-muted">Not set yet</span>{% endif %}{% endwith %}</dd>
+          <dt>Champion</dt><dd>{% with i=account.champion|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<span class="t-muted">Not set yet</span>{% endif %}{% endwith %}</dd>
+          <dt>Users</dt><dd>{% with i=account.users|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<span class="t-muted">Not set yet</span>{% endif %}{% endwith %}</dd>
+          <dt>Can block it</dt><dd>{% with i=account.blockers|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<span class="t-muted">Not set yet</span>{% endif %}{% endwith %}</dd>
+        </dl>
+      </div>
+      <div class="block">
+        <div class="block__head">
+          <h3 class="block__t">What has to happen for it to move</h3>
+          <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'move' %}" aria-label="Edit what has to happen and risk">{% include "partials/pen.html" %}</button>
+        </div>
+        {% with i=account.must_happen|bullets %}{% if i %}<ol class="steps">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ol>{% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+        <div class="risk">
+          <span class="risk__k"><span class="dot-orange" aria-hidden="true"></span> Biggest current risk</span>
+          {% if account.biggest_risk %}<p>{{ account.biggest_risk|linebreaksbr }}</p>{% else %}<p class="t-muted">Not set yet</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="block nextact{% if not account.next_action %} is-empty{% endif %}">
+      <div class="block__head">
+        <h3 class="block__t">Next action</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'next' %}" aria-label="Edit next action">{% include "partials/pen.html" %}</button>
+      </div>
+      {% if account.next_action %}
+      <p class="nextact__t">{{ account.next_action }}</p>
+      <p class="t-meta">
+        <span class="tag tag--outline">Owner: {{ account.next_action_owner|default:"not set" }}</span>
+        <span class="tag mono{% if account.next_action_date and account.next_action_date < today %} tag--mark{% endif %}">{% if account.next_action_date %}{{ account.next_action_date|date:"M j, Y" }}{% else %}No date{% endif %}</span>
+      </p>
+      {% else %}
+      <p class="t-muted">Waiting for you: the exact next action, who owns it, and the date.</p>
+      <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'next' %}">{% include "partials/plus.html" %} Set next action</button>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{# ===== Short buying thesis ===== #}
+<section class="sec card" id="thesis">
+  <header class="sec__head">
+    <h2 class="t-h3">Buying thesis in short</h2>
+    <span class="t-meta">Why they buy, and what it takes</span>
+  </header>
+  <div class="sec__body qs">
+    <div class="q" id="thesis-why">
+      <div class="q__head"><span class="sec__n mono">Q1</span><h3 class="q__t">Why would {{ account.name }} buy BioLens?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'why' %}" aria-label="Edit why they would buy">{% include "partials/pen.html" %}</button></div>
+      <dl class="kv kv--tight">
+        <dt>Biggest problem</dt><dd>{{ account.why_buy|linebreaksbr|default:'<span class="t-muted">Not set yet</span>' }}</dd>
+        <dt>Painful right now</dt><dd>{{ account.pain_now|linebreaksbr|default:'<span class="t-muted">Not set yet</span>' }}</dd>
+      </dl>
+    </div>
+    <div class="q" id="thesis-who">
+      <div class="q__head"><span class="sec__n mono">Q2</span><h3 class="q__t">Who actually cares, and why?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'people' %}" aria-label="Edit who cares">{% include "partials/pen.html" %}</button></div>
+      {% if account.who_cares %}<p>{{ account.who_cares|linebreaksbr }}</p>{% else %}<p class="t-muted">Not set yet</p>{% endif %}
+      <p class="note">Buyer, champion, users and blockers are in the deal snapshot above.</p>
+    </div>
+    <div class="q" id="thesis-first">
+      <div class="q__head"><span class="sec__n mono">Q3</span><h3 class="q__t">What are they buying first?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'first' %}" aria-label="Edit what they buy first">{% include "partials/pen.html" %}</button></div>
+      {% if account.buying_first %}<p>{{ account.buying_first|linebreaksbr }}</p>{% else %}<p class="t-muted">Not set yet</p>{% endif %}
+    </div>
+    <div class="q" id="thesis-before">
+      <div class="q__head"><span class="sec__n mono">Q4</span><h3 class="q__t">What has to happen before they pay?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'before' %}" aria-label="Edit what has to happen before they pay">{% include "partials/pen.html" %}</button></div>
+      {% with i=account.before_pay|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+    </div>
+    <div class="q" id="thesis-expand">
+      <div class="q__head"><span class="sec__n mono">Q5</span><h3 class="q__t">What would make them expand?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'expand' %}" aria-label="Edit what would make them expand">{% include "partials/pen.html" %}</button></div>
+      {% if account.expansion_trigger %}<p><span class="tag tag--type">Trigger</span> {{ account.expansion_trigger }}</p>{% endif %}
+      {% with i=account.expand_when|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+    </div>
+    <div class="q" id="thesis-path">
+      <div class="q__head"><span class="sec__n mono">Q6</span><h3 class="q__t">What is the realistic commercial path?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'commercial' %}" aria-label="Edit commercial path">{% include "partials/pen.html" %}</button></div>
+      <ol class="cpath">
+        {% for n in commercial %}
+        <li class="cpath__node">
+          <span class="cpath__name">{{ n.name }}</span>
+          <span class="cpath__date mono">{% if n.label %}{% if not n.plain %}&#10003; {% endif %}{{ n.label }}{% elif n.date %}{{ n.date|date:"M j, Y" }}{% if n.auto %} <abbr title="Predicted from the stage tracker">(est.)</abbr>{% endif %}{% endif %}</span>
+          {% if n.value %}<span class="cpath__val">{{ n.value }}</span>{% elif n.empty %}<span class="cpath__val"><span class="t-muted">{{ n.empty }}</span></span>{% endif %}
+          {% if n.note %}<span class="cpath__note">{{ n.note }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="note">Dates marked est. come from the predicted timeline. Set a date in the pen to override it. Expected usage sits under Real usage; set it in the pen.</p>
+    </div>
+    <div class="q" id="thesis-whynot">
+      <div class="q__head"><span class="sec__n mono">Q7</span><h3 class="q__t">Why might they not buy?</h3>
+        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'whynot' %}" aria-label="Edit why they might not buy">{% include "partials/pen.html" %}</button></div>
+      {% with i=account.why_not|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+    </div>
+    <p class="note">What healthy usage looks like at each stage, and where to gate or guide in the product, is on the <a href="{% url 'pipeline:playbook' %}">Usage playbook</a>.</p>
+  </div>
+</section>
+
+<div class="divider"><span class="eyebrow">Full buying thesis</span></div>
+
 {# 1 · Company #}
 <section class="sec card" id="company">
   <header class="sec__head">

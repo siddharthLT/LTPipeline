@@ -1,0 +1,51 @@
+{% extends "app.html" %}
+{% load pipeline_extras %}
+{% block title %}Usage playbook · Lunartree{% endblock %}
+{% block page_class %}page--thesis{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Usage playbook</span>
+  <h1 class="t-h1">What healthy usage looks like</h1>
+  <p class="t-meta">At each stage: the behaviour that tells us usage is real, the credit use to expect, what justifies moving on, and where to gate or guide inside the product so users progress on their own. These are starting hypotheses. Edit them as real usage data comes in.</p>
+</header>
+
+<ol class="flow" aria-label="Stages">
+  {% for s in stages %}<li><a href="#usage-{{ s.pk }}"><span class="mono">{{ s.order }}</span>{{ s.name }}</a></li>{% endfor %}
+</ol>
+
+{% for s in stages %}
+<section class="sec card" id="usage-{{ s.pk }}">
+  <header class="sec__head">
+    <span class="sec__n mono">{{ s.order }}</span><h2 class="t-h3">{{ s.name }}</h2>
+    {% if s.window %}<span class="tag tag--outline">{{ s.window }}</span>{% endif %}
+    <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_usage_stage' s.pk %}" aria-label="Edit {{ s.name }}">{% include "partials/pen.html" %}</button>
+  </header>
+  <div class="sec__body">
+    <div class="twocol">
+      <div class="block">
+        <h3 class="block__t">What healthy usage looks like</h3>
+        {% with i=s.healthy|bullets %}{% if i %}<ul class="pts">{% for x in i %}<li>{{ x }}</li>{% endfor %}</ul>{% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+      </div>
+      <div class="block">
+        <h3 class="block__t">Credit use to expect</h3>
+        <p>{{ s.credits|default:"Not set yet" }}</p>
+        <h3 class="block__t block__t--gap">What justifies moving on</h3>
+        <p>{{ s.moves_on|default:"Not set yet" }}</p>
+      </div>
+    </div>
+    <div class="block">
+      <h3 class="block__t">Where to gate or guide in the product</h3>
+      {% with i=s.gate|bullets %}{% if i %}
+      <ul class="gates">{% for x in i %}
+        <li>{% if x|slice:":5" == "Gate:" %}<span class="tag tag--mark">Gate</span>{{ x|slice:"5:" }}{% elif x|slice:":6" == "Guide:" %}<span class="tag tag--type">Guide</span>{{ x|slice:"6:" }}{% else %}{{ x }}{% endif %}</li>
+      {% endfor %}</ul>
+      {% else %}<p class="t-muted">Not set yet</p>{% endif %}{% endwith %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+<dialog class="modal modal--edit" id="edit-modal" aria-labelledby="edit-modal-title">
+  <div data-modal-slot></div>
+</dialog>
+{% endblock %}

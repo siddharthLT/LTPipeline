@@ -93,3 +93,14 @@
     if (b) { history.replaceState(null, '', location.pathname + '#stages'); b.click(); }
   }
 })();
+
+// Dashboard: expand the summary row under an account.
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-toggle-row]');
+  if (!t) return;
+  var row = document.getElementById(t.dataset.toggleRow);
+  if (!row) return;
+  var open = row.hasAttribute('hidden');
+  row.toggleAttribute('hidden', !open);
+  t.setAttribute('aria-expanded', open ? 'true' : 'false');
+});

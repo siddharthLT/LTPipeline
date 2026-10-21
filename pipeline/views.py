@@ -6,9 +6,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import (AccountForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
-                    ProfileForm, StageForm, TaskForm, meeting_part_form)
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent
+from .forms import (SNAPSHOT_FORMS, AccountForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
+                    ProfileForm, StageForm, TaskForm, UsageStageForm, meeting_part_form)
+from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent, UsageStage
 from .stages import STAGES
 
 SECTIONS = {
@@ -37,6 +37,11 @@ def dashboard(request):
     accounts = list(Account.objects.prefetch_related('stage_progress'))
     for a in accounts:
         a.cells = a.gantt_cells()
+        a.path = a.path_steps()
+        a.path_percent = round(sum(p['fraction'] for p in a.path) / len(a.path) * 100)
+        a.next_stage_info = a.next_stage
+        sched = a.schedule()
+        a.contract_info = sched[11]
     return render(request, 'pipeline/dashboard.html', {
         'accounts': accounts,
         'stages': STAGES,
@@ -52,8 +57,16 @@ def account_detail(request, pk):
     tasks = sorted(account.tasks.all(), key=lambda t: (t.done, t.due_date, t.id))
     today = datetime.date.today()
     open_tasks = [t for t in tasks if not t.done]
+    schedule = account.schedule()
+    path = account.path_steps()
     return render(request, 'pipeline/account_detail.html', {
         'account': account,
+        'schedule': schedule,
+        'next_stage': account.next_stage,
+        'contract': schedule[11],
+        'path': path,
+        'path_pct': round(sum(p['fraction'] for p in path) / len(path) * 100),
+        'commercial': account.commercial_nodes(),
         'stage_rows': account.stage_rows(),
         'meetings': account.meetings.all(),
         'events': account.events.all(),
@@ -86,6 +99,9 @@ def edit_section(request, pk, section):
     if section == 'stages':
         form = StageForm(account, request.POST or None)
         return _form_response(request, form, 'Stage tracker and score', 'stages')
+    if section in SNAPSHOT_FORMS:
+        form_class, title, anchor = SNAPSHOT_FORMS[section]
+        return _form_response(request, form_class(request.POST or None, instance=account), title, anchor)
     if section not in SECTIONS:
         return JsonResponse({'error': 'unknown section'}, status=404)
     form_class, title, anchor = SECTIONS[section]
@@ -137,3 +153,16 @@ def toggle_task(request, pk, item_id):
     task.done = not task.done
     task.save(update_fields=['done'])
     return JsonResponse({'ok': True, 'anchor': 'tasks'})
+
+
+@login_required
+def playbook(request):
+    return render(request, 'pipeline/playbook.html', {'stages': UsageStage.objects.all(), 'nav': 'playbook'})
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def edit_usage_stage(request, pk):
+    stage = get_object_or_404(UsageStage, pk=pk)
+    form = UsageStageForm(request.POST or None, instance=stage)
+    return _form_response(request, form, f'Edit: {stage.name}', f'usage-{stage.pk}')

@@ -103,6 +103,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 if os.environ.get('DATABASE_URL'):
     import dj_database_url
     DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'], conn_max_age=0)}
+    if os.environ.get('DB_HOSTADDR'):
+        # Local fallback when the machine's DNS cannot resolve the database host: connect to this IP,
+        # while the hostname is still used for TLS.
+        DATABASES['default'].setdefault('OPTIONS', {})['hostaddr'] = os.environ['DB_HOSTADDR']
 else:
     DATABASES = {
         'default': {

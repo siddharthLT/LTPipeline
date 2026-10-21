@@ -12,6 +12,10 @@
         {% include "partials/icon_gantt.html" %}
         Pipeline
       </a>
+      <a class="navitem" href="{% url 'pipeline:playbook' %}" {% if nav == 'playbook' %}aria-current="page"{% endif %}>
+        <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L20 7"/></svg>
+        Usage playbook
+      </a>
     </nav>
     <div class="sidenav__foot">
       <div class="who">

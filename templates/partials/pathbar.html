@@ -1,0 +1,12 @@
+{# Five-segment progress bar for the path after a demo. Usage: include with path (list), labels (bool). #}
+<ol class="pathbar{% if labels %} pathbar--labels{% endif %}">
+  {% for s in path %}
+  <li class="pathbar__step is-{{ s.state }}">
+    <span class="pathbar__track"><span class="pathbar__fill" style="width: {{ s.pct }}%"></span></span>
+    {% if labels %}
+    <span class="pathbar__name">{{ s.name }}</span>
+    <span class="pathbar__meta mono">{% if s.state == 'done' %}&#10003; Done{% else %}{{ s.pct }}%{% endif %}</span>
+    {% else %}<span class="sr-only">{{ s.name }}: {{ s.pct }}%</span>{% endif %}
+  </li>
+  {% endfor %}
+</ol>

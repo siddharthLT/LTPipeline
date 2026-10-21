@@ -10,3 +10,4 @@ demo/
 .DS_Store
 # Seed commands hold real customer thesis content; keep local.
 pipeline/management/commands/seed_*.py
+*buying thesis.html

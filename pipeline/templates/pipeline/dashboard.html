@@ -36,6 +36,9 @@
         {% for account in accounts %}
         <tr>
           <th scope="row" class="gantt__acct">
+            <button type="button" class="gantt__toggle" data-toggle-row="row-{{ account.pk }}" aria-expanded="false" aria-controls="row-{{ account.pk }}" aria-label="Show summary for {{ account.name }}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 5.75 15.75 12l-6.25 6.25"/></svg>
+            </button>
             <a class="gantt__link" href="{% url 'pipeline:account_detail' account.pk %}">
               <span class="gantt__co clamp-1">{{ account.name }}</span>
               <span class="gantt__dom mono clamp-1">{{ account.domain }}</span>
@@ -49,7 +52,37 @@
             {% endif %}
           </td>
           {% endfor %}
-          <td class="gantt__score-cell mono">{{ account.score }}%</td>
+          <td class="gantt__score-cell">
+            <span class="scorechip">{% include "partials/donut.html" with pct=account.score arc=account.score_arc size=30 %}<span class="mono">{{ account.score }}%</span></span>
+          </td>
+        </tr>
+        <tr class="gantt__detail" id="row-{{ account.pk }}" hidden>
+          <td colspan="14">
+            <div class="snap">
+              <div class="snap__grid">
+                <div class="snap__cell">
+                  <span class="snap__k">Current stage</span>
+                  <span class="snap__v">{{ account.furthest_stage_name }}</span>
+                  <span class="snap__s mono">Step {{ account.furthest_stage }} of 12 &middot; {{ account.score }}% to close</span>
+                </div>
+                <div class="snap__cell">
+                  <span class="snap__k">Predicted timeline</span>
+                  <span class="snap__v">{% if account.next_stage_info %}{{ account.next_stage_info.name }}: <span class="mono">{{ account.next_stage_info.date|date:"M j" }}</span>{% else %}No open step ahead{% endif %}</span>
+                  <span class="snap__s mono">{% if account.contract_info.done %}Contract signed{% else %}Contract by {{ account.contract_info.date|date:"M j, Y" }}{% endif %}</span>
+                </div>
+                <div class="snap__cell snap__cell--wide">
+                  <span class="snap__k">Path to contract and expansion &middot; <span class="mono">{{ account.path_percent }}%</span></span>
+                  {% include "partials/pathbar.html" with path=account.path %}
+                </div>
+              </div>
+              <dl class="snap__list">
+                <div><dt>Next action</dt><dd>{% if account.next_action %}{{ account.next_action }}{% if account.next_action_owner %} <span class="t-muted">&middot; {{ account.next_action_owner }}</span>{% endif %}{% if account.next_action_date %} <span class="mono t-muted">&middot; {{ account.next_action_date|date:"M j" }}</span>{% endif %}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
+                <div><dt>Biggest risk</dt><dd>{% if account.biggest_risk %}{{ account.biggest_risk }}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
+                <div><dt>Why they would buy</dt><dd>{% if account.why_buy %}{{ account.why_buy }}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
+              </dl>
+              <a class="btn btn--ghost btn--sm" href="{% url 'pipeline:account_detail' account.pk %}">Open thesis</a>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -58,6 +91,7 @@
   <div class="gantt__legend">
     <span class="legend"><i class="swatch swatch--done"></i> Step done</span>
     <span class="legend"><i class="swatch swatch--now"></i> Furthest step reached</span>
+    <span class="legend t-meta">Open the arrow beside an account for its summary.</span>
   </div>
 </section>
 {% else %}

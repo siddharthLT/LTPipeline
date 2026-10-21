@@ -1,0 +1,5 @@
+{# Usage: include with pct, arc, size (px). Circumference at r=10 is 62.83. #}
+<svg class="donut" viewBox="0 0 28 28" width="{{ size|default:28 }}" height="{{ size|default:28 }}" role="img" aria-label="{{ pct }}%">
+  <circle cx="14" cy="14" r="10" fill="none" stroke="var(--line)" stroke-width="4"/>
+  <circle cx="14" cy="14" r="10" fill="none" stroke="var(--teal)" stroke-width="4" stroke-linecap="butt" stroke-dasharray="{{ arc|stringformat:'s' }} 62.83" transform="rotate(-90 14 14)"/>
+</svg>
