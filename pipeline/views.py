@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (SNAPSHOT_FORMS, AccountForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
                     ProfileForm, StageForm, TaskForm, UsageStageForm, meeting_part_form)
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent, UsageStage
+from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
 from .stages import STAGES
 
 SECTIONS = {
@@ -166,3 +166,26 @@ def edit_usage_stage(request, pk):
     stage = get_object_or_404(UsageStage, pk=pk)
     form = UsageStageForm(request.POST or None, instance=stage)
     return _form_response(request, form, f'Edit: {stage.name}', f'usage-{stage.pk}')
+
+
+FLAGS = ('usage_tried', 'usage_value', 'usage_onboarded', 'integration_started')
+
+
+@login_required
+@require_POST
+def toggle_stage(request, pk, num):
+    row = get_object_or_404(StageProgress, account_id=pk, stage=num)
+    row.done = not row.done
+    row.save(update_fields=['done'])
+    return JsonResponse({'ok': True, 'anchor': 'timeline-strip'})
+
+
+@login_required
+@require_POST
+def toggle_flag(request, pk, flag):
+    if flag not in FLAGS:
+        return JsonResponse({'error': 'unknown flag'}, status=404)
+    account = get_object_or_404(Account, pk=pk)
+    setattr(account, flag, not getattr(account, flag))
+    account.save(update_fields=[flag])
+    return JsonResponse({'ok': True, 'anchor': 'path-block'})

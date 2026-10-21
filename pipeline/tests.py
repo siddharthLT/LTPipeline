@@ -234,3 +234,21 @@ class SnapshotTests(TestCase):
     def test_login_required(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse('pipeline:playbook')).status_code, 302)
+
+
+class InlineToggleTests(SnapshotTests):
+    def test_stage_chip_toggles_and_updates_score_and_path(self):
+        url = reverse('pipeline:stage_toggle', args=[self.a.pk, 8])
+        self.assertEqual(self.client.post(url).json()['anchor'], 'timeline-strip')
+        self.assertEqual(Account.objects.get(pk=self.a.pk).score, 10)
+        self.assertIn(8, Account.objects.get(pk=self.a.pk).done_stages)
+        self.client.post(url)
+        self.assertEqual(Account.objects.get(pk=self.a.pk).score, 0)
+
+    def test_usage_flag_toggle_and_validation(self):
+        url = reverse('pipeline:flag_toggle', args=[self.a.pk, 'usage_tried'])
+        self.client.post(url)
+        self.a.refresh_from_db()
+        self.assertTrue(self.a.usage_tried)
+        self.assertEqual(self.client.post(reverse('pipeline:flag_toggle', args=[self.a.pk, 'name'])).status_code, 404)
+        self.assertEqual(self.client.get(url).status_code, 405)

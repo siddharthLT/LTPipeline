@@ -48,7 +48,7 @@
       </div>
     </div>
 
-    <div class="block">
+    <div class="block" id="timeline-strip">
       <div class="block__head">
         <h3 class="block__t">Predicted timeline to contract</h3>
         <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'stages' %}" aria-label="Edit stages and target dates">{% include "partials/pen.html" %}</button>
@@ -56,28 +56,42 @@
       <ol class="tstrip">
         {% for s in schedule %}
         <li class="tstrip__item{% if s.done %} is-done{% elif s.gap %} is-gap{% endif %}{% if next_stage and s.num == next_stage.num %} is-next{% endif %}">
-          <span class="tstrip__n mono">{{ s.num }}</span>
-          <span class="tstrip__name">{{ s.name }}</span>
-          <span class="tstrip__date mono">{% if s.done %}&#10003; Done{% else %}{{ s.date|date:"M j" }}{% if s.override %}<abbr title="Target date you set"> *</abbr>{% endif %}{% endif %}</span>
+          <button type="button" class="tstrip__btn" role="checkbox" aria-checked="{% if s.done %}true{% else %}false{% endif %}"
+                  data-toggle-url="{% url 'pipeline:stage_toggle' account.pk s.num %}"
+                  title="{% if s.done %}Click to mark not done{% else %}Click to mark done{% endif %}">
+            <span class="tstrip__n mono">{{ s.num }}</span>
+            <span class="tstrip__name">{{ s.name }}</span>
+            <span class="tstrip__date mono">{% if s.done %}&#10003; Done{% else %}{{ s.date|date:"M j" }}{% if s.override %}<abbr title="Target date you set"> *</abbr>{% endif %}{% endif %}</span>
+            <span class="tstrip__box" aria-hidden="true">{% if s.done %}&#10003;{% endif %}</span>
+          </button>
           {% if s.gap and not s.done %}<span class="tstrip__tag">Gap</span>{% endif %}
         </li>
         {% endfor %}
       </ol>
-      <p class="note">Dates are predicted from today using typical step lengths. Open steps behind your furthest step are shown as gaps. A <span class="mono">*</span> marks a target date you set.</p>
+      <p class="note">Click a step to mark it done or not done. Score, path and dates all update from these ticks. Dates are predicted from today using typical step lengths; open steps behind your furthest step are gaps. Use the pen to set a target date or add a reason. A <span class="mono">*</span> marks a target date you set.</p>
     </div>
 
-    <div class="block">
+    <div class="block" id="path-block">
       <div class="block__head">
         <h3 class="block__t">Path: demo &rarr; usage &rarr; pilot &rarr; annual &rarr; expansion <span class="mono block__pct">{{ path_pct }}%</span></h3>
         <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'usage' %}" aria-label="Edit usage checks">{% include "partials/pen.html" %}</button>
       </div>
       {% include "partials/pathbar.html" with path=path labels=True %}
       <ul class="checks">
-        {% for key, label, ok in path.1.checks %}
-        <li class="{% if ok %}is-ok{% endif %}"><span class="checks__box" aria-hidden="true">{% if ok %}&#10003;{% endif %}</span>{{ label }}</li>
+        {% for c in path.1.checks %}
+        <li class="{% if c.ok %}is-ok{% endif %}">
+          <button type="button" class="checks__btn" role="checkbox" aria-checked="{% if c.ok %}true{% else %}false{% endif %}" data-toggle-url="{% url 'pipeline:flag_toggle' account.pk c.key %}">
+            <span class="checks__box" aria-hidden="true">{% if c.ok %}&#10003;{% endif %}</span>{{ c.label }}{% if c.ok and not c.manual %} <span class="t-muted">(counted from a done pilot)</span>{% endif %}
+          </button>
+        </li>
         {% endfor %}
+        <li class="{% if account.integration_started %}is-ok{% endif %}">
+          <button type="button" class="checks__btn" role="checkbox" aria-checked="{% if account.integration_started %}true{% else %}false{% endif %}" data-toggle-url="{% url 'pipeline:flag_toggle' account.pk 'integration_started' %}">
+            <span class="checks__box" aria-hidden="true">{% if account.integration_started %}&#10003;{% endif %}</span>Integration or expansion started
+          </button>
+        </li>
       </ul>
-      <p class="note">Updates as you tick the 12 steps. Demo follows steps 1&ndash;8, pilot follows steps 10&ndash;11 and the contract follows step 12. A done pilot counts all usage checks as met.</p>
+      <p class="note">Click a check to tick it. The path also follows the 12 steps: Demo = steps 1&ndash;8, Pilot = steps 10&ndash;11, Annual contract = step 12. A done pilot counts all usage checks as met.</p>
     </div>
 
     <div class="twocol">

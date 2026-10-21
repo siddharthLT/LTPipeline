@@ -160,12 +160,13 @@ class Account(models.Model):
         """Demo -> real usage -> pilot -> annual contract -> integration, each 0..1, from the stage ticks."""
         done = self.done_stages
         piloting = 10 in done or 11 in done or 12 in done
-        checks = [(key, label, bool(getattr(self, key)) or piloting) for key, label in USAGE_CHECKS]
+        checks = [{'key': key, 'label': label, 'manual': bool(getattr(self, key)), 'ok': bool(getattr(self, key)) or piloting}
+                  for key, label in USAGE_CHECKS]
         w = STAGE_WEIGHTS
         demo = 1.0 if 8 in done else sum(w[n] for n in done if n < 8) / sum(w[n] for n in range(1, 8))
         fractions = [
             demo,
-            sum(1 for *_, ok in checks if ok) / len(checks),
+            sum(1 for c in checks if c['ok']) / len(checks),
             sum(1 for n in (10, 11) if n in done) / 2,
             1.0 if 12 in done else 0.0,
             1.0 if self.integration_started else 0.0,
@@ -201,7 +202,7 @@ class Account(models.Model):
             return {'date': s['date'], 'label': '', 'auto': True}
 
         usage = self.path_steps()[1]
-        checks_ok = sum(1 for *_, ok in usage['checks'] if ok)
+        checks_ok = sum(1 for c in usage['checks'] if c['ok'])
         usage_when = ({'date': None, 'label': 'Done', 'auto': False} if usage['state'] == 'done'
                       else {'date': None, 'label': f'{checks_ok} of {len(usage["checks"])} checks', 'auto': False, 'plain': True})
         return [
