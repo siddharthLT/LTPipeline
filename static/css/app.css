@@ -434,3 +434,10 @@ th.gantt__acct.gantt__head { padding-left: var(--s-4) !important; }
 .actions-collapsed .actionbar__body, .actions-collapsed .actionbar__t { display: none; }
 .actions-collapsed .actionbar__head { justify-content: center; padding-inline: 0; }
 .actions-collapsed .actionbar__chev { transform: rotate(180deg); }
+
+/* ---- show / hide password ---- */
+.pw { position: relative; }
+.pw .field__input { padding-right: 48px; }
+.pw__toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; }
+.pw__toggle:hover { color: var(--ink); background: var(--surface-2); }
+.pw__toggle[aria-pressed="true"] { color: var(--teal-deep); }

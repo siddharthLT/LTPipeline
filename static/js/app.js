@@ -131,3 +131,18 @@ document.addEventListener('click', function (e) {
     try { localStorage.setItem('actionsCollapsed', c ? '1' : '0'); } catch (e) {}
   });
 })();
+
+// Login: show or hide the password so it can be checked.
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-pw-toggle]');
+  if (!t) return;
+  var input = t.parentElement.querySelector('input');
+  if (!input) return;
+  var show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  t.setAttribute('aria-pressed', show ? 'true' : 'false');
+  t.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  t.querySelector('.pw__eye').hidden = show;
+  t.querySelector('.pw__eye-off').hidden = !show;
+  input.focus();
+});
