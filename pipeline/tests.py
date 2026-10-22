@@ -228,6 +228,17 @@ class SnapshotTests(TestCase):
         ot = Task.objects.create(account=other, title='x')
         self.assertEqual(self.client.post(reverse('pipeline:action_toggle', args=[pk, ot.pk])).status_code, 404)
 
+    def test_pending_actions_panel_lists_open_actions_across_accounts(self):
+        from .models import Task
+        other = Account.objects.create(name='Zed Bio', domain='zed.io')
+        Task.objects.create(account=self.a, title='Send deck', owner='Sid')
+        Task.objects.create(account=other, title='Call Zed', owner='Vedant', due_date=datetime.date(2026, 11, 3))
+        Task.objects.create(account=other, title='Old thing', done=True)
+        r = self.client.get(reverse('pipeline:dashboard'))
+        for text in ('Pending actions', 'Send deck', 'Call Zed', 'Zed Bio', 'Vedant'):
+            self.assertContains(r, text)
+        self.assertNotContains(r, 'Old thing')
+
     def test_playbook_is_seeded_and_editable(self):
         from .models import UsageStage
         self.assertEqual(UsageStage.objects.count(), 5)

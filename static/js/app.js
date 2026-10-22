@@ -113,3 +113,21 @@ document.addEventListener('click', function (e) {
   byId.forEach((_, id) => { const el = document.getElementById(id); if (el) io.observe(el); });
   set(links[0].getAttribute('href').slice(1));
 })();
+
+// Right-hand pending actions panel: collapse and remember the choice.
+(function () {
+  var shell = document.querySelector('[data-shell]');
+  var btn = document.querySelector('[data-actionbar-toggle]');
+  if (!shell || !btn) return;
+  function apply(collapsed) {
+    shell.classList.toggle('actions-collapsed', collapsed);
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    btn.setAttribute('aria-label', collapsed ? 'Expand pending actions' : 'Collapse pending actions');
+  }
+  try { apply(localStorage.getItem('actionsCollapsed') === '1'); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var c = !shell.classList.contains('actions-collapsed');
+    apply(c);
+    try { localStorage.setItem('actionsCollapsed', c ? '1' : '0'); } catch (e) {}
+  });
+})();
