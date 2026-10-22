@@ -389,3 +389,13 @@ th.gantt__acct.gantt__head { padding-left: var(--s-4) !important; }
 .snapshot .donut circle:first-child { stroke: rgba(255, 255, 255, 0.2); }
 .snapshot .note { color: var(--ink-2); }
 .snapshot .t-muted { color: var(--ink-2); }
+
+/* ---- next actions list ---- */
+.actions { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.action { display: flex; align-items: flex-start; gap: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); background: rgba(255, 255, 255, 0.06); }
+.action__check { flex: none; padding: 4px 0 0; cursor: pointer; color: inherit; }
+.action__body { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.action__t { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; }
+.action .tag { margin-right: 6px; }
+.action.is-done .action__t { text-decoration: line-through; color: var(--ink-2); font-weight: 500; }
+.action__check[aria-checked="true"] .checks__box { background: #5BCFD4; border-color: #5BCFD4; color: #06383B; }

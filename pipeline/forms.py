@@ -2,7 +2,7 @@ import re
 
 from django import forms
 
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, TimelineEvent, UsageStage, normalize_domain
+from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent, UsageStage, normalize_domain
 from .stages import CRITERIA
 
 DOMAIN_RE = re.compile(r'^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
@@ -159,6 +159,15 @@ class EmailForm(StyledModelForm):
         widgets = {'sent_on': DateInput(), 'body': forms.Textarea(attrs={'rows': 10})}
 
 
+class ActionForm(StyledModelForm):
+    class Meta:
+        model = Task
+        fields = ['title', 'owner', 'due_date']
+        labels = {'title': 'What needs to happen', 'owner': 'Owner', 'due_date': 'Date'}
+        widgets = {'title': forms.TextInput(attrs={'placeholder': 'Send Andrea the rerun mAb workspace'}),
+                   'owner': forms.TextInput(attrs={'placeholder': 'Siddharth'}), 'due_date': DateInput()}
+
+
 # --- Deal snapshot, short thesis, commercial path: small forms built from a field spec ---
 def section_form(spec, intro=''):
     """spec: (field, label, kind, hint). kind is text | area | bullets | date | check."""
@@ -194,11 +203,6 @@ SNAPSHOT_FORMS = {
         ('must_happen', 'What has to happen for the deal to move', 'bullets'),
         ('biggest_risk', 'Biggest current risk', 'area', 'The main reason this may not happen'),
     ]), 'What has to happen, and the biggest risk', 'move'),
-    'next': (section_form([
-        ('next_action', 'Exact next action', 'text', 'Send Andrea the rerun mAb workspace'),
-        ('next_action_owner', 'Owner', 'text', 'Siddharth'),
-        ('next_action_date', 'Date', 'date'),
-    ]), 'Next action', 'next'),
     'usage': (section_form([
         ('usage_tried', 'At least 1 user tried the product', 'check'),
         ('usage_value', 'At least 1 user reached value (decision makers enriched, email written, or copilot used)', 'check'),

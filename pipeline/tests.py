@@ -203,13 +203,30 @@ class SnapshotTests(TestCase):
         r = self.client.get(reverse('pipeline:account_detail', args=[self.a.pk]))
         self.assertContains(r, 'Deal snapshot')
         self.assertContains(r, 'Buying thesis in short')
-        for section in ['people', 'move', 'next', 'usage', 'why', 'first', 'before', 'expand', 'commercial', 'whynot']:
+        for section in ['people', 'move', 'usage', 'why', 'first', 'before', 'expand', 'commercial', 'whynot']:
             self.assertEqual(self.client.get(reverse('pipeline:edit_section', args=[self.a.pk, section])).status_code, 200, section)
-        r = self.client.post(reverse('pipeline:edit_section', args=[self.a.pk, 'next']),
-                             {'next_action': 'Send deck', 'next_action_owner': 'Sid', 'next_action_date': '2026-11-02'})
-        self.assertEqual(r.status_code, 200)
-        self.a.refresh_from_db()
-        self.assertEqual((self.a.next_action, self.a.next_action_owner), ('Send deck', 'Sid'))
+
+    def test_next_actions_add_many_toggle_delete(self):
+        from .models import Task
+        pk = self.a.pk
+        new = reverse('pipeline:item_new', args=[pk, 'action'])
+        self.assertEqual(self.client.post(new, {'title': 'Send deck', 'owner': 'Sid', 'due_date': '2026-11-02'}).status_code, 200)
+        self.assertEqual(self.client.post(new, {'title': 'Book Rob call'}).status_code, 200)  # owner and date optional
+        self.assertEqual(self.client.post(new, {'title': ''}).status_code, 400)
+        self.assertEqual(Task.objects.filter(account=self.a).count(), 2)
+        t = Task.objects.get(title='Send deck')
+        r = self.client.get(reverse('pipeline:account_detail', args=[pk]))
+        self.assertContains(r, 'Send deck')
+        self.assertContains(r, 'Book Rob call')
+        self.client.post(reverse('pipeline:action_toggle', args=[pk, t.pk]))
+        t.refresh_from_db()
+        self.assertTrue(t.done)
+        self.assertEqual(len(self.a.open_actions()), 1)
+        self.client.post(reverse('pipeline:item_delete', args=[pk, 'action', t.pk]))
+        self.assertEqual(Task.objects.filter(account=self.a).count(), 1)
+        other = Account.objects.create(name='O', domain='o.io')
+        ot = Task.objects.create(account=other, title='x')
+        self.assertEqual(self.client.post(reverse('pipeline:action_toggle', args=[pk, ot.pk])).status_code, 404)
 
     def test_playbook_is_seeded_and_editable(self):
         from .models import UsageStage

@@ -16,7 +16,7 @@
     {% if account.deal_value %}<span class="tag mono">{{ account.deal_value }}</span>{% endif %}
     <span class="tag mono">{{ account.score }}% score</span>
     <span class="tag tag--outline mono">{{ account.domain }}</span>
-    {% if account.next_action_date and account.next_action_date < today %}<span class="tag tag--mark">Next action overdue</span>{% endif %}
+    {% with od=account.overdue_actions|length %}{% if od %}<span class="tag tag--mark">{{ od }} action{{ od|pluralize }} overdue</span>{% endif %}{% endwith %}
   </div>
 </header>
 
@@ -135,20 +135,32 @@
       </div>
     </div>
 
-    <div class="block nextact{% if not account.next_action %} is-empty{% endif %}">
+    <div class="block nextact" id="next-actions">
       <div class="block__head">
-        <h3 class="block__t">Next action</h3>
-        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'next' %}" aria-label="Edit next action">{% include "partials/pen.html" %}</button>
+        <h3 class="block__t">Next actions</h3>
+        <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'action' %}">{% include "partials/plus.html" %} Add action</button>
       </div>
-      {% if account.next_action %}
-      <p class="nextact__t">{{ account.next_action }}</p>
-      <p class="t-meta">
-        <span class="tag tag--outline">Owner: {{ account.next_action_owner|default:"not set" }}</span>
-        <span class="tag mono{% if account.next_action_date and account.next_action_date < today %} tag--mark{% endif %}">{% if account.next_action_date %}{{ account.next_action_date|date:"M j, Y" }}{% else %}No date{% endif %}</span>
-      </p>
+      {% if account.tasks.all %}
+      <ul class="actions">
+        {% for t in account.tasks.all %}
+        <li class="action{% if t.done %} is-done{% endif %}">
+          <button type="button" class="action__check" role="checkbox" aria-checked="{% if t.done %}true{% else %}false{% endif %}"
+                  data-toggle-url="{% url 'pipeline:action_toggle' account.pk t.pk %}" aria-label="Mark done: {{ t.title }}">
+            <span class="checks__box" aria-hidden="true">{% if t.done %}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% endif %}</span>
+          </button>
+          <div class="action__body">
+            <p class="action__t">{{ t.title }}</p>
+            <p class="t-meta">
+              <span class="tag tag--outline">Owner: {{ t.owner|default:"not set" }}</span>
+              <span class="tag mono{% if not t.done and t.due_date and t.due_date < today %} tag--mark{% endif %}">{% if t.due_date %}{{ t.due_date|date:"M j, Y" }}{% else %}No date{% endif %}</span>
+            </p>
+          </div>
+          <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' account.pk 'action' t.pk %}" aria-label="Edit action">{% include "partials/pen.html" %}</button>
+        </li>
+        {% endfor %}
+      </ul>
       {% else %}
-      <p class="t-muted">Waiting for you: the exact next action, who owns it, and the date.</p>
-      <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:edit_section' account.pk 'next' %}">{% include "partials/plus.html" %} Set next action</button>
+      <p class="t-muted">Waiting for you: the exact next actions, who owns each, and the date.</p>
       {% endif %}
     </div>
   </div>

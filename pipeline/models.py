@@ -104,6 +104,13 @@ class Account(models.Model):
     def furthest_stage_name(self):
         return STAGE_NAMES.get(self.furthest_stage, 'Not started')
 
+    def open_actions(self):
+        return [t for t in self.tasks.all() if not t.done]
+
+    def overdue_actions(self, today=None):
+        today = today or datetime.date.today()
+        return [t for t in self.open_actions() if t.due_date and t.due_date < today]
+
     @property
     def score_arc(self):
         """Length of the filled arc of the small donut (circumference 62.83 at r=10)."""
@@ -314,21 +321,22 @@ class SentEmail(models.Model):
         ordering = ['sent_on', 'id']
 
 
-# --- Tasks and next actions ---
+# --- Next actions: any number per account, each with an owner and an optional date ---
 class Task(models.Model):
     class Kind(models.TextChoices):
         TASK = 'task', 'Task'
         NEXT_ACTION = 'next_action', 'Next action'
 
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='tasks')
-    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.NEXT_ACTION)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.NEXT_ACTION)  # unused, kept for old rows
     title = models.CharField(max_length=300)
-    due_date = models.DateField()
+    owner = models.CharField(max_length=100, blank=True)
+    due_date = models.DateField(null=True, blank=True)
     done = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['done', 'due_date', 'id']
+        ordering = ['done', models.F('due_date').asc(nulls_last=True), 'id']
 
 
 # --- Usage playbook: what healthy usage looks like at each stage, and where to gate or guide ---

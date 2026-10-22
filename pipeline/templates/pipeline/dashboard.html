@@ -76,7 +76,7 @@
                 </div>
               </div>
               <dl class="snap__list">
-                <div><dt>Next action</dt><dd>{% if account.next_action %}{{ account.next_action }}{% if account.next_action_owner %} <span class="t-muted">&middot; {{ account.next_action_owner }}</span>{% endif %}{% if account.next_action_date %} <span class="mono t-muted">&middot; {{ account.next_action_date|date:"M j" }}</span>{% endif %}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
+                <div><dt>Next actions</dt><dd>{% with open=account.open_actions %}{% if open %}{% for t in open|slice:":3" %}<div>{{ t.title }}{% if t.owner %} <span class="t-muted">&middot; {{ t.owner }}</span>{% endif %}{% if t.due_date %} <span class="mono t-muted">&middot; {{ t.due_date|date:"M j" }}</span>{% endif %}</div>{% endfor %}{% if open|length > 3 %}<span class="t-muted">+{{ open|length|add:"-3" }} more</span>{% endif %}{% else %}<span class="t-muted">None set yet</span>{% endif %}{% endwith %}</dd></div>
                 <div><dt>Biggest risk</dt><dd>{% if account.biggest_risk %}{{ account.biggest_risk }}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
                 <div><dt>Why they would buy</dt><dd>{% if account.why_buy %}{{ account.why_buy }}{% else %}<span class="t-muted">Not set yet</span>{% endif %}</dd></div>
               </dl>
