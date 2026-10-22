@@ -16,9 +16,26 @@
     {% if account.deal_value %}<span class="tag mono">{{ account.deal_value }}</span>{% endif %}
     <span class="tag mono">{{ account.score }}% score</span>
     <span class="tag tag--outline mono">{{ account.domain }}</span>
-    {% if overdue_count %}<span class="tag tag--mark">{{ overdue_count }} overdue</span>{% endif %}
+    {% if account.next_action_date and account.next_action_date < today %}<span class="tag tag--mark">Next action overdue</span>{% endif %}
   </div>
 </header>
+
+<div class="thesis-layout">
+<nav class="toc" aria-label="On this page">
+  <ul class="toc__list">
+    <li><a href="#deal" class="toc__a toc__a--key">Deal snapshot</a></li>
+    <li><a href="#thesis" class="toc__a toc__a--key">Thesis in short</a></li>
+    <li class="toc__sep" aria-hidden="true">Full buying thesis</li>
+    <li><a href="#company" class="toc__a"><span class="mono">1</span>Company</a></li>
+    <li><a href="#overview" class="toc__a"><span class="mono">2</span>What they do</a></li>
+    <li><a href="#profile" class="toc__a"><span class="mono">3</span>Modality and phase</a></li>
+    <li><a href="#icp" class="toc__a"><span class="mono">4</span>Their ICP</a></li>
+    <li><a href="#stages" class="toc__a"><span class="mono">5</span>Stage tracker</a></li>
+    <li><a href="#meetings" class="toc__a"><span class="mono">6</span>Meeting notes</a></li>
+    <li><a href="#timeline" class="toc__a"><span class="mono">7</span>Timeline and emails</a></li>
+  </ul>
+</nav>
+<div class="thesis-main">
 
 {# ===== Deal snapshot ===== #}
 <section class="sec card snapshot" id="deal">
@@ -372,34 +389,8 @@
   </div>
 </section>
 
-{# 8 · Tasks #}
-<section class="sec card" id="tasks">
-  <header class="sec__head">
-    <span class="sec__n mono">8</span><h2 class="t-h3">Tasks and next actions</h2>
-    <button type="button" class="btn btn--ghost btn--sm" data-edit-url="{% url 'pipeline:item_new' account.pk 'task' %}">{% include "partials/plus.html" %} Add task</button>
-  </header>
-  <div class="sec__body">
-    {% if tasks %}
-    <ul class="tasks">
-      {% for t in tasks %}
-      <li class="task{% if t.done %} is-done{% endif %}">
-        <button type="button" class="task__check" role="checkbox" aria-checked="{% if t.done %}true{% else %}false{% endif %}"
-                data-toggle-url="{% url 'pipeline:task_toggle' account.pk t.pk %}" aria-label="Mark {{ t.title }} {% if t.done %}not done{% else %}done{% endif %}">
-          <span class="check-box">{% if t.done %}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% endif %}</span>
-        </button>
-        <span class="task__title">{{ t.title }}</span>
-        <span class="tag {% if t.kind == 'next_action' %}tag--type{% else %}tag--outline{% endif %}">{{ t.get_kind_display }}</span>
-        <span class="task__due mono{% if not t.done and t.due_date < today %} is-overdue{% endif %}">
-          {% if not t.done and t.due_date < today %}<span class="dot-orange" aria-hidden="true"></span>{% endif %}
-          Due {{ t.due_date|date:"M j, Y" }}
-        </span>
-        <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' account.pk 'task' t.pk %}" aria-label="Edit task">{% include "partials/pen.html" %}</button>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}<p class="t-muted">No tasks yet. Add the next action with a due date.</p>{% endif %}
-  </div>
-</section>
+</div>
+</div>
 
 <dialog class="modal modal--edit" id="edit-modal" aria-labelledby="edit-modal-title">
   <div data-modal-slot></div>

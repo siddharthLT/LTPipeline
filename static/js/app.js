@@ -100,3 +100,16 @@ document.addEventListener('click', function (e) {
   row.toggleAttribute('hidden', !open);
   t.setAttribute('aria-expanded', open ? 'true' : 'false');
 });
+
+// Thesis page: highlight the left-nav entry for the section in view.
+(function () {
+  const links = Array.from(document.querySelectorAll('.toc__a'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const set = (id) => links.forEach((a) => a.classList.toggle('is-active', a === byId.get(id)));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) set(e.target.id); });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+  byId.forEach((_, id) => { const el = document.getElementById(id); if (el) io.observe(el); });
+  set(links[0].getAttribute('href').slice(1));
+})();

@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from accounts.models import User
 
-from .models import Account, MeetingNote, SentEmail, Task, TimelineEvent, normalize_domain
+from .models import Account, MeetingNote, SentEmail, TimelineEvent, normalize_domain
 from .stages import STAGE_WEIGHTS
 
 
@@ -77,7 +77,8 @@ class ThesisTests(Base):
     def test_detail_renders(self):
         r = self.client.get(reverse('pipeline:account_detail', args=[self.account.pk]))
         self.assertContains(r, 'Buying thesis')
-        self.assertContains(r, 'Tasks and next actions')
+        self.assertContains(r, 'On this page')
+        self.assertNotContains(r, 'Tasks and next actions')
 
     def test_edit_company_overview_profile_icp(self):
         pk = self.account.pk
@@ -119,21 +120,6 @@ class ThesisTests(Base):
         self.post(url, {f'c_{keys[0]}': 'on'})  # untick two criteria: done again becomes false
         self.assertEqual(Account.objects.get(pk=self.account.pk).score, 0)
 
-    def test_tasks_crud_and_toggle(self):
-        pk = self.account.pk
-        r = self.post(reverse('pipeline:item_new', args=[pk, 'task']),
-                      {'kind': 'next_action', 'title': 'Send pricing', 'due_date': '2026-10-25'})
-        self.assertEqual(r.status_code, 200)
-        t = Task.objects.get()
-        self.assertEqual(t.due_date, datetime.date(2026, 10, 25))
-        bad = self.post(reverse('pipeline:item_new', args=[pk, 'task']), {'kind': 'task', 'title': 'No date'})
-        self.assertEqual(bad.status_code, 400)
-        self.post(reverse('pipeline:task_toggle', args=[pk, t.pk]), {})
-        t.refresh_from_db()
-        self.assertTrue(t.done)
-        self.post(reverse('pipeline:item_delete', args=[pk, 'task', t.pk]), {})
-        self.assertEqual(Task.objects.count(), 0)
-
     def test_meeting_parts_events_emails(self):
         pk = self.account.pk
         self.post(reverse('pipeline:item_new', args=[pk, 'meeting']), {'title': 'Sep 21 call', 'held_on': '2026-09-21'})
@@ -150,12 +136,6 @@ class ThesisTests(Base):
         r = self.client.get(reverse('pipeline:account_detail', args=[pk]))
         for text in ('Sep 21 call', 'Walkthrough', 'Recap', 'Jyoti'):
             self.assertContains(r, text)
-
-    def test_cannot_touch_other_accounts_items(self):
-        other = Account.objects.create(name='O', domain='o.io')
-        t = Task.objects.create(account=other, title='t', due_date=datetime.date(2026, 1, 1))
-        r = self.client.post(reverse('pipeline:task_toggle', args=[self.account.pk, t.pk]))
-        self.assertEqual(r.status_code, 404)
 
     def test_login_required(self):
         self.client.logout()

@@ -7,8 +7,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (SNAPSHOT_FORMS, AccountForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
-                    ProfileForm, StageEditForm, TaskForm, UsageStageForm, meeting_part_form)
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
+                    ProfileForm, StageEditForm, UsageStageForm, meeting_part_form)
+from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, StageProgress, TimelineEvent, UsageStage
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
 SECTIONS = {
@@ -23,7 +23,6 @@ ITEMS = {
     'meeting': (MeetingNote, MeetingForm, 'meeting', 'meetings'),
     'event': (TimelineEvent, EventForm, 'timeline entry', 'timeline'),
     'email': (SentEmail, EmailForm, 'sent email', 'timeline'),
-    'task': (Task, TaskForm, 'task', 'tasks'),
 }
 
 
@@ -54,9 +53,7 @@ def dashboard(request):
 @login_required
 def account_detail(request, pk):
     account = get_object_or_404(Account.objects.prefetch_related('stage_progress'), pk=pk)
-    tasks = sorted(account.tasks.all(), key=lambda t: (t.done, t.due_date, t.id))
     today = datetime.date.today()
-    open_tasks = [t for t in tasks if not t.done]
     schedule = account.schedule()
     path = account.path_steps()
     return render(request, 'pipeline/account_detail.html', {
@@ -71,9 +68,6 @@ def account_detail(request, pk):
         'meetings': account.meetings.all(),
         'events': account.events.all(),
         'emails': account.emails.all(),
-        'tasks': tasks,
-        'open_task_count': len(open_tasks),
-        'overdue_count': sum(1 for t in open_tasks if t.due_date < today),
         'today': today,
         'nav': 'pipeline',
         'circumference': 439.82,
@@ -141,15 +135,6 @@ def delete_item(request, pk, kind, item_id):
     model, _, _, anchor = ITEMS[kind]
     get_object_or_404(model, pk=item_id, account_id=pk).delete()
     return JsonResponse({'ok': True, 'anchor': anchor})
-
-
-@login_required
-@require_POST
-def toggle_task(request, pk, item_id):
-    task = get_object_or_404(Task, pk=item_id, account_id=pk)
-    task.done = not task.done
-    task.save(update_fields=['done'])
-    return JsonResponse({'ok': True, 'anchor': 'tasks'})
 
 
 @login_required

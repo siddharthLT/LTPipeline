@@ -2,7 +2,7 @@ import re
 
 from django import forms
 
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, Task, TimelineEvent, UsageStage, normalize_domain
+from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, TimelineEvent, UsageStage, normalize_domain
 from .stages import CRITERIA
 
 DOMAIN_RE = re.compile(r'^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
@@ -157,14 +157,6 @@ class EmailForm(StyledModelForm):
         fields = ['sent_on', 'subject', 'recipients', 'body']
         labels = {'sent_on': 'Date sent', 'subject': 'Subject', 'recipients': 'To / cc', 'body': 'Email'}
         widgets = {'sent_on': DateInput(), 'body': forms.Textarea(attrs={'rows': 10})}
-
-
-class TaskForm(StyledModelForm):
-    class Meta:
-        model = Task
-        fields = ['kind', 'title', 'due_date']
-        labels = {'kind': 'Type', 'title': 'What needs to happen', 'due_date': 'Due date'}
-        widgets = {'title': forms.TextInput(attrs={'placeholder': 'Send pricing to Suneel'}), 'due_date': DateInput()}
 
 
 # --- Deal snapshot, short thesis, commercial path: small forms built from a field spec ---
