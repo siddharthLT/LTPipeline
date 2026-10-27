@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import (SNAPSHOT_FORMS, AccountForm, ActionForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
                     ProfileForm, StageEditForm, UsageStageForm, meeting_part_form)
 from .models import MEETING_PARTS, SEGMENTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
+from .forecast import build as build_forecast
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
 SECTIONS = {
@@ -44,6 +45,7 @@ def dashboard(request):
         sched = a.schedule()
         a.contract_info = sched[11]
     return render(request, 'pipeline/dashboard.html', {
+        'forecast': build_forecast(accounts),
         'accounts': accounts,
         'stages': STAGES,
         'segments': SEGMENTS,

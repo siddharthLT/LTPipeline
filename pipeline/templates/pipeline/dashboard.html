@@ -17,6 +17,31 @@
 </div>
 
 {% if accounts %}
+<section class="arr card" id="arr" aria-label="ARR forecast">
+  <div class="arr__head">
+    <div>
+      <span class="eyebrow">Forecast</span>
+      <h2 class="t-h2">ARR over the next 12 months</h2>
+    </div>
+    <p class="t-meta arr__note">Expected = each account's deal value &times; its score %, counted from its predicted contract date. Best case counts every account at 100%.</p>
+  </div>
+  <div class="arr__body">
+    <div class="arr__chart"><svg id="arr-svg" viewBox="0 0 640 280" role="img" aria-label="Expected ARR by month" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <dl class="arr__stats">
+      <div class="arr__stat"><dt>Accounts signed</dt><dd class="mono" id="arr-accounts">0</dd><span class="arr__sub mono" id="arr-accounts-b"></span></div>
+      <div class="arr__stat"><dt>ARR</dt><dd class="mono" id="arr-arr">$0</dd><span class="arr__sub mono" id="arr-arr-b"></span></div>
+      <div class="arr__stat"><dt>Users</dt><dd class="mono" id="arr-users">0</dd><span class="arr__sub mono" id="arr-users-b"></span></div>
+    </dl>
+  </div>
+  <div class="arr__slide">
+    <label for="arr-range"><span class="arr__when mono" id="arr-when"></span></label>
+    <input type="range" id="arr-range" min="0" max="12" step="1" value="12" aria-label="Months from today">
+    <div class="arr__ticks mono" aria-hidden="true"><span>Today</span><span>6 mo</span><span>12 mo</span></div>
+  </div>
+  <p class="t-meta arr__foot">Deal values come from team size in sales and marketing (&gt;100: $50K, 20&ndash;100: $30K, under 20: $15K a year), unless set on the account. Users assume ${{ forecast.user_price }} per user a year.</p>
+  {{ forecast|json_script:"arr-data" }}
+</section>
+
 <form class="filters" id="filters" role="search" aria-label="Filter accounts" onsubmit="return false">
   <label class="filters__search">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>

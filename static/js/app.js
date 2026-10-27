@@ -231,3 +231,49 @@ document.addEventListener('click', function (e) {
   list.addEventListener('click', function (e) { var li = e.target.closest('[data-i]'); if (li) go(+li.dataset.i); });
   dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
 })();
+
+// Dashboard: ARR forecast chart with a month slider.
+(function () {
+  var dataEl = document.getElementById('arr-data');
+  if (!dataEl) return;
+  var pts = JSON.parse(dataEl.textContent).points;
+  var svg = document.getElementById('arr-svg'), range = document.getElementById('arr-range');
+  var W = 640, H = 280, L = 56, R = 16, T = 16, B = 30;
+  var max = Math.max.apply(null, pts.map(function (p) { return p.best_arr; })) || 1;
+  var step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step;
+  function x(m) { return L + (W - L - R) * m / 12; }
+  function y(v) { return T + (H - T - B) * (1 - v / top); }
+  function money(v) { return v >= 1e6 ? '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : '$' + Math.round(v / 1000) + 'K'; }
+  function line(key) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.month).toFixed(1) + ' ' + y(p[key]).toFixed(1); }).join(' '); }
+  var g = '';
+  for (var i = 0; i <= 4; i++) {
+    var v = top * i / 4;
+    g += '<line class="arr__grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
+         '<text class="arr__axis" x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + money(v) + '</text>';
+  }
+  [0, 3, 6, 9, 12].forEach(function (m) {
+    g += '<text class="arr__axis" x="' + x(m) + '" y="' + (H - 8) + '" text-anchor="middle">' + (m ? m + ' mo' : 'Today') + '</text>';
+  });
+  svg.innerHTML = g +
+    '<path class="arr__best" d="' + line('best_arr') + '"/>' +
+    '<path class="arr__area" d="' + line('arr') + ' L' + x(12) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>' +
+    '<path class="arr__line" d="' + line('arr') + '"/>' +
+    '<line class="arr__cursor" id="arr-cur" y1="' + T + '" y2="' + (H - B) + '"/>' +
+    '<circle class="arr__dot" id="arr-dot" r="6"/><circle class="arr__dot arr__dot--b" id="arr-dotb" r="4"/>';
+  var cur = document.getElementById('arr-cur'), dot = document.getElementById('arr-dot'), dotb = document.getElementById('arr-dotb');
+  function show() {
+    var p = pts[+range.value];
+    cur.setAttribute('x1', x(p.month)); cur.setAttribute('x2', x(p.month));
+    dot.setAttribute('cx', x(p.month)); dot.setAttribute('cy', y(p.arr));
+    dotb.setAttribute('cx', x(p.month)); dotb.setAttribute('cy', y(p.best_arr));
+    document.getElementById('arr-when').textContent = p.month ? p.date + ' · ' + p.month + ' month' + (p.month > 1 ? 's' : '') + ' out' : 'Today · ' + p.date;
+    document.getElementById('arr-accounts').textContent = p.accounts.toFixed(1);
+    document.getElementById('arr-arr').textContent = money(p.arr);
+    document.getElementById('arr-users').textContent = p.users;
+    document.getElementById('arr-accounts-b').textContent = 'best case ' + p.best_accounts;
+    document.getElementById('arr-arr-b').textContent = 'best case ' + money(p.best_arr);
+    document.getElementById('arr-users-b').textContent = 'best case ' + p.best_users;
+  }
+  range.addEventListener('input', show);
+  show();
+})();

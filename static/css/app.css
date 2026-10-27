@@ -480,3 +480,29 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .gantt__co { line-height: 18px; }
 .gantt__dom { line-height: 14px; font-size: 11px; }
 .gantt__legend { flex-wrap: wrap; }
+
+/* ARR forecast */
+.arr { padding: var(--s-5); margin-bottom: var(--s-5); }
+.arr__head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--s-4); flex-wrap: wrap; margin-bottom: var(--s-4); }
+.arr__note { max-width: 440px; margin: 0; }
+.arr__body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: var(--s-5); align-items: center; }
+.arr__chart svg { width: 100%; height: auto; display: block; }
+.arr__grid { stroke: var(--line); stroke-width: 1; }
+.arr__axis { font-size: 11px; fill: var(--ink-2); }
+.arr__line { fill: none; stroke: var(--teal-deep); stroke-width: 2.5; stroke-linejoin: round; }
+.arr__area { fill: var(--teal-50); opacity: .8; }
+.arr__best { fill: none; stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .7; }
+.arr__cursor { stroke: var(--teal-deep); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
+.arr__dot { fill: var(--teal-deep); stroke: #fff; stroke-width: 2; }
+.arr__dot--b { fill: var(--ink-2); }
+.arr__stats { display: grid; gap: var(--s-3); margin: 0; }
+.arr__stat { padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-md, 10px); display: grid; gap: 2px; }
+.arr__stat dt { font-size: var(--fs-micro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.arr__stat dd { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 600; }
+.arr__sub { font-size: 12px; color: var(--ink-2); }
+.arr__slide { margin-top: var(--s-3); }
+.arr__slide input { width: 100%; accent-color: var(--teal-deep); }
+.arr__when { font-size: var(--fs-sm); font-weight: 600; }
+.arr__ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-2); }
+.arr__foot { margin: var(--s-3) 0 0; }
+@media (max-width: 760px) { .arr__body { grid-template-columns: 1fr; } .arr__stats { grid-template-columns: repeat(3, 1fr); } .arr__stat dd { font-size: 22px; } }

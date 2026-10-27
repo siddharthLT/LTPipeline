@@ -271,3 +271,34 @@ class InlineToggleTests(SnapshotTests):
         self.assertTrue(self.a.usage_tried)
         self.assertEqual(self.client.post(reverse('pipeline:flag_toggle', args=[self.a.pk, 'name'])).status_code, 404)
         self.assertEqual(self.client.get(url).status_code, 405)
+
+
+class ForecastTests(TestCase):
+    def test_parse_arr(self):
+        from .forecast import parse_arr
+        self.assertEqual(parse_arr('$30K'), 30000)
+        self.assertEqual(parse_arr('$12-25K'), 18500)
+        self.assertEqual(parse_arr('$1.2M'), 1200000)
+        self.assertIsNone(parse_arr(''))
+
+    def test_build_weights_by_score_and_date(self):
+        import datetime
+        from types import SimpleNamespace as NS
+        from .forecast import build
+        today = datetime.date(2026, 10, 27)
+        near = NS(score=50, deal_value='$30K', contract_info={'done': False, 'date': datetime.date(2026, 12, 1)})
+        far = NS(score=10, deal_value='', contract_info={'done': False, 'date': datetime.date(2027, 9, 1)})
+        pts = build([near, far], today)['points']
+        self.assertEqual(pts[0]['accounts'], 0)
+        self.assertEqual(pts[2]['accounts'], 0.5)      # near lands within 2 months, weighted 50%
+        self.assertEqual(pts[2]['arr'], 15000)
+        self.assertEqual(pts[2]['best_arr'], 30000)
+        self.assertEqual(pts[12]['best_accounts'], 2)  # far lands inside 12 months
+        self.assertEqual(pts[12]['arr'], 15000 + 1500)  # far uses the $15K default at 10%
+
+    def test_dashboard_shows_forecast(self):
+        from django.contrib.auth import get_user_model
+        user = get_user_model().objects.create_user(email='f@x.io', password='pw-123456')
+        self.client.force_login(user)
+        Account.objects.create(name='A', domain='a.com')
+        self.assertContains(self.client.get('/'), 'id="arr-data"')
