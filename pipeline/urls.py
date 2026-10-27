@@ -6,6 +6,7 @@ app_name = 'pipeline'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('search.json', views.search_index, name='search'),
     path('rules/', views.rules, name='rules'),
     path('playbook/', views.playbook, name='playbook'),
     path('playbook/<int:pk>/edit/', views.edit_usage_stage, name='edit_usage_stage'),

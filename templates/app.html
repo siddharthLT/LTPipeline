@@ -7,6 +7,10 @@
       <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
       <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
     </a>
+    <button type="button" class="searchbtn" data-open-palette aria-label="Search accounts">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <span>Search</span><kbd class="kbd" data-kbd>Ctrl K</kbd>
+    </button>
     <nav aria-label="Primary">
       <a class="navitem" href="{% url 'pipeline:dashboard' %}" {% if nav == 'pipeline' %}aria-current="page"{% endif %}>
         {% include "partials/icon_gantt.html" %}
@@ -39,6 +43,7 @@
         <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
         <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
       </a>
+      <button type="button" class="icon-btn" data-open-palette aria-label="Search accounts"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button>
       <form method="post" action="{% url 'accounts:logout' %}" class="appbar__end">
         {% csrf_token %}
         <button type="submit" class="btn btn--quiet btn--sm">Log out</button>
@@ -76,4 +81,11 @@
     </div>
   </aside>
 </div>
+<dialog class="palette" id="palette" data-search-url="{% url 'pipeline:search' %}" aria-label="Search">
+  <div class="palette__box">
+    <input type="search" class="palette__input" id="palette-q" placeholder="Search accounts, or jump to a page" autocomplete="off" aria-label="Search accounts">
+    <ul class="palette__list" id="palette-list" role="listbox"></ul>
+    <p class="palette__foot mono"><span>&uarr;&darr; move</span><span>&crarr; open</span><span>esc close</span></p>
+  </div>
+</dialog>
 {% endblock %}

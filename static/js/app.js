@@ -174,3 +174,60 @@ document.addEventListener('click', function (e) {
   clear.addEventListener('click', function () { q.value = ''; seg.value = ''; stg.value = ''; apply(); });
   apply();
 })();
+
+// Cmd/Ctrl+K search palette, available on every page.
+(function () {
+  var dlg = document.getElementById('palette');
+  if (!dlg) return;
+  var input = document.getElementById('palette-q'), list = document.getElementById('palette-list');
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  document.querySelectorAll('[data-kbd]').forEach(function (k) { k.textContent = isMac ? '⌘K' : 'Ctrl K'; });
+  var pages = [
+    {name: 'Pipeline', sub: 'Dashboard', url: '/'},
+    {name: 'Usage playbook', sub: 'Page', url: '/playbook/'},
+    {name: 'Scoring rules', sub: 'Page', url: '/rules/'}
+  ];
+  var data = null, items = [], sel = 0;
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+  function render() {
+    var t = input.value.trim().toLowerCase();
+    var all = (data || []).map(function (a) {
+      return {name: a.name, sub: [a.domain, a.segment, a.stage + ' · ' + a.score + '%'].filter(Boolean).join(' · '), url: a.url, hay: (a.name + ' ' + a.domain + ' ' + a.segment).toLowerCase()};
+    });
+    if (t) {
+      items = all.filter(function (a) { return a.hay.indexOf(t) !== -1; });
+      items.sort(function (a, b) { return (b.name.toLowerCase().indexOf(t) === 0) - (a.name.toLowerCase().indexOf(t) === 0); });
+      items = items.concat(pages.filter(function (p) { return p.name.toLowerCase().indexOf(t) !== -1; }));
+    } else {
+      items = pages.concat(all);
+    }
+    items = items.slice(0, 30);
+    sel = 0;
+    list.innerHTML = items.length ? items.map(function (it, i) {
+      return '<li role="option" data-i="' + i + '" class="palette__item' + (i === 0 ? ' is-sel' : '') + '"><span class="palette__n">' + esc(it.name) + '</span><span class="palette__s">' + esc(it.sub) + '</span></li>';
+    }).join('') : '<li class="palette__empty">' + (data ? 'No matches.' : 'Loading…') + '</li>';
+  }
+  function mark() {
+    Array.from(list.children).forEach(function (li, i) { li.classList.toggle('is-sel', i === sel); });
+    var el = list.children[sel]; if (el && el.scrollIntoView) el.scrollIntoView({block: 'nearest'});
+  }
+  function go(i) { if (items[i]) window.location.href = items[i].url; }
+  function open() {
+    if (!dlg.open) dlg.showModal();
+    input.value = ''; render(); input.focus();
+    if (!data) fetch(dlg.dataset.searchUrl, {credentials: 'same-origin'}).then(function (r) { return r.json(); })
+      .then(function (j) { data = j.accounts; render(); }).catch(function () { data = []; render(); });
+  }
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); dlg.open ? dlg.close() : open(); }
+  });
+  document.addEventListener('click', function (e) { if (e.target.closest('[data-open-palette]')) open(); });
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); mark(); }
+    else if (e.key === 'Enter') { e.preventDefault(); go(sel); }
+  });
+  list.addEventListener('click', function (e) { var li = e.target.closest('[data-i]'); if (li) go(+li.dataset.i); });
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+})();

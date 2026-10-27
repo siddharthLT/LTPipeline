@@ -54,6 +54,19 @@ def dashboard(request):
 
 
 @login_required
+def search_index(request):
+    """Accounts for the Cmd/Ctrl+K palette."""
+    accounts = Account.objects.prefetch_related('stage_progress')
+    rows = [{
+        'name': a.name, 'domain': a.domain, 'segment': a.get_segment_display() if a.segment else '',
+        'score': a.score, 'stage': a.furthest_stage_name,
+        'url': reverse('pipeline:account_detail', args=[a.pk]),
+    } for a in accounts]
+    rows.sort(key=lambda r: (-r['score'], r['name'].lower()))
+    return JsonResponse({'accounts': rows})
+
+
+@login_required
 def account_detail(request, pk):
     account = get_object_or_404(Account.objects.prefetch_related('stage_progress', 'tasks'), pk=pk)
     today = datetime.date.today()
