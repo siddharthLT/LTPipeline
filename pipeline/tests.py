@@ -281,20 +281,37 @@ class ForecastTests(TestCase):
         self.assertEqual(parse_arr('$1.2M'), 1200000)
         self.assertIsNone(parse_arr(''))
 
-    def test_build_weights_by_score_and_date(self):
+    def test_close_probability(self):
+        from .forecast import close_probability
+        self.assertAlmostEqual(close_probability(15, 0.2), 0.2)      # just had the first call
+        self.assertAlmostEqual(close_probability(100, 0.2), 1.0)
+        self.assertAlmostEqual(close_probability(0, 0.2), 0.0)
+        self.assertLess(close_probability(5, 0.2), 0.2)              # before the first call
+        self.assertGreater(close_probability(50, 0.2), 0.2)
+
+    def test_build_whole_accounts_cycle_and_conversion(self):
         import datetime
         from types import SimpleNamespace as NS
         from .forecast import build
         today = datetime.date(2026, 10, 27)
-        near = NS(score=50, deal_value='$30K', contract_info={'done': False, 'date': datetime.date(2026, 12, 1)})
-        far = NS(score=10, deal_value='', contract_info={'done': False, 'date': datetime.date(2027, 9, 1)})
-        pts = build([near, far], today)['points']
-        self.assertEqual(pts[0]['accounts'], 0)
-        self.assertEqual(pts[2]['accounts'], 0.5)      # near lands within 2 months, weighted 50%
-        self.assertEqual(pts[2]['arr'], 15000)
-        self.assertEqual(pts[2]['best_arr'], 30000)
-        self.assertEqual(pts[12]['best_accounts'], 2)  # far lands inside 12 months
-        self.assertEqual(pts[12]['arr'], 15000 + 1500)  # far uses the $15K default at 10%
+
+        def acct(name, score, val, days):
+            return NS(name=name, score=score, deal_value=val,
+                      contract_info={'done': False, 'date': today + datetime.timedelta(days=days)})
+        # 135 days is the cold span; a 3 month cycle squeezes it to about 91 days
+        a = acct('A', 15, '$30K', 135)
+        b = acct('B', 15, '$50K', 135)
+        c = acct('C', 15, '', 135)
+        pts = build([a, b, c], today, cycle_months=3, conversion=0.5)['points']
+        self.assertEqual(pts[2]['accounts'], 0)                      # nothing due inside 2 months
+        self.assertEqual(pts[3]['accounts'], 2)                      # 3 x 0.5 = 1.5 -> 2 accounts due by month 3
+        self.assertEqual(pts[3]['best_accounts'], 3)
+        self.assertEqual(len(pts[3]['names']), 2)
+        slow = build([a, b, c], today, cycle_months=6, conversion=0.5)['points']
+        self.assertEqual(slow[3]['accounts'], 0)                     # conservative cycle pushes them out
+        self.assertGreaterEqual(slow[12]['accounts'], 1)
+        arr = [p['arr'] for p in pts]
+        self.assertEqual(arr, sorted(arr))
 
     def test_dashboard_shows_forecast(self):
         from django.contrib.auth import get_user_model

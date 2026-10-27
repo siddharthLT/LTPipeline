@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import (SNAPSHOT_FORMS, AccountForm, ActionForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
                     ProfileForm, StageEditForm, UsageStageForm, meeting_part_form)
 from .models import MEETING_PARTS, SEGMENTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
+from .forecast import DEFAULT_CONVERSION, DEFAULT_CYCLE_MONTHS
 from .forecast import build as build_forecast
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
@@ -28,6 +29,13 @@ ITEMS = {
 }
 
 
+def _number(raw, default, low, high):
+    try:
+        return min(max(int(raw), low), high)
+    except (TypeError, ValueError):
+        return default
+
+
 @login_required
 @require_http_methods(['GET', 'POST'])
 def dashboard(request):
@@ -37,6 +45,8 @@ def dashboard(request):
         return redirect('pipeline:account_detail', pk=account.pk)
     accounts = list(Account.objects.prefetch_related('stage_progress', 'tasks'))
     accounts.sort(key=lambda a: (-a.score, a.name.lower()))
+    cycle = _number(request.GET.get('cycle'), DEFAULT_CYCLE_MONTHS, 1, 24)
+    conv = _number(request.GET.get('conv'), round(DEFAULT_CONVERSION * 100), 1, 100)
     for a in accounts:
         a.cells = a.gantt_cells()
         a.path = a.path_steps()
@@ -45,7 +55,7 @@ def dashboard(request):
         sched = a.schedule()
         a.contract_info = sched[11]
     return render(request, 'pipeline/dashboard.html', {
-        'forecast': build_forecast(accounts),
+        'forecast': build_forecast(accounts, cycle_months=cycle, conversion=conv / 100),
         'accounts': accounts,
         'stages': STAGES,
         'segments': SEGMENTS,

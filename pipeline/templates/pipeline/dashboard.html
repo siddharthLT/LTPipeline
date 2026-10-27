@@ -23,8 +23,20 @@
       <span class="eyebrow">Forecast</span>
       <h2 class="t-h2">ARR over the next 12 months</h2>
     </div>
-    <p class="t-meta arr__note">Expected = each account's deal value &times; its score %, counted from its predicted contract date. Best case counts every account at 100%.</p>
+    <p class="t-meta arr__note">Expected = whole accounts: the most likely ones among those due by that date. An account that has just had its first call has the chance set here, rising to 100% at contract. ARR is their deal values. Best case counts every account due. Your scores are not changed.</p>
   </div>
+  <form class="arr__set" method="get" action="{% url 'pipeline:dashboard' %}#arr" aria-label="Forecast assumptions">
+    <label>Sales cycle for a cold account
+      <select name="cycle" class="field__input field__input--plain field__select" onchange="this.form.submit()">
+        <option value="3"{% if forecast.cycle_months == 3 %} selected{% endif %}>3 months (typical)</option>
+        <option value="6"{% if forecast.cycle_months == 6 %} selected{% endif %}>6 months (conservative)</option>
+        {% if forecast.cycle_months != 3 and forecast.cycle_months != 6 %}<option value="{{ forecast.cycle_months }}" selected>{{ forecast.cycle_months }} months</option>{% endif %}
+      </select>
+    </label>
+    <label>Chance to sign after a first call
+      <span class="arr__pct"><input type="number" name="conv" min="1" max="100" value="{{ forecast.conversion }}" class="field__input field__input--plain" onchange="this.form.submit()">%</span>
+    </label>
+  </form>
   <div class="arr__body">
     <div class="arr__chart"><svg id="arr-svg" viewBox="0 0 640 280" role="img" aria-label="Expected ARR by month" preserveAspectRatio="xMidYMid meet"></svg></div>
     <dl class="arr__stats">
@@ -38,6 +50,7 @@
     <input type="range" id="arr-range" min="0" max="12" step="1" value="12" aria-label="Months from today">
     <div class="arr__ticks mono" aria-hidden="true"><span>Today</span><span>6 mo</span><span>12 mo</span></div>
   </div>
+  <p class="t-meta arr__names"><strong>Expected to sign:</strong> <span id="arr-names"></span></p>
   <p class="t-meta arr__foot">Deal values come from team size in sales and marketing (&gt;100: $50K, 20&ndash;100: $30K, under 20: $15K a year), unless set on the account. Users assume ${{ forecast.user_price }} per user a year.</p>
   {{ forecast|json_script:"arr-data" }}
 </section>

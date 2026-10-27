@@ -267,7 +267,8 @@ document.addEventListener('click', function (e) {
     dot.setAttribute('cx', x(p.month)); dot.setAttribute('cy', y(p.arr));
     dotb.setAttribute('cx', x(p.month)); dotb.setAttribute('cy', y(p.best_arr));
     document.getElementById('arr-when').textContent = p.month ? p.date + ' · ' + p.month + ' month' + (p.month > 1 ? 's' : '') + ' out' : 'Today · ' + p.date;
-    document.getElementById('arr-accounts').textContent = p.accounts.toFixed(1);
+    document.getElementById('arr-accounts').textContent = p.accounts;
+    document.getElementById('arr-names').textContent = p.names.length ? p.names.join(', ') : 'None yet';
     document.getElementById('arr-arr').textContent = money(p.arr);
     document.getElementById('arr-users').textContent = p.users;
     document.getElementById('arr-accounts-b').textContent = 'best case ' + p.best_accounts;

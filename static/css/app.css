@@ -506,3 +506,9 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-2); }
 .arr__foot { margin: var(--s-3) 0 0; }
 @media (max-width: 760px) { .arr__body { grid-template-columns: 1fr; } .arr__stats { grid-template-columns: repeat(3, 1fr); } .arr__stat dd { font-size: 22px; } }
+.arr__names { margin: var(--s-3) 0 0; }
+.arr__set { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-bottom: var(--s-4); }
+.arr__set label { display: grid; gap: 4px; font-size: var(--fs-label); color: var(--ink-2); }
+.arr__set select { min-width: 200px; }
+.arr__pct { display: flex; align-items: center; gap: 6px; }
+.arr__pct input { width: 80px; }
