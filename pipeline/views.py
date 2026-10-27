@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (SNAPSHOT_FORMS, AccountForm, ActionForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
                     ProfileForm, StageEditForm, UsageStageForm, meeting_part_form)
-from .models import MEETING_PARTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
+from .models import MEETING_PARTS, SEGMENTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
 SECTIONS = {
@@ -35,6 +35,7 @@ def dashboard(request):
         account = form.save()
         return redirect('pipeline:account_detail', pk=account.pk)
     accounts = list(Account.objects.prefetch_related('stage_progress', 'tasks'))
+    accounts.sort(key=lambda a: (-a.score, a.name.lower()))
     for a in accounts:
         a.cells = a.gantt_cells()
         a.path = a.path_steps()
@@ -45,6 +46,7 @@ def dashboard(request):
     return render(request, 'pipeline/dashboard.html', {
         'accounts': accounts,
         'stages': STAGES,
+        'segments': SEGMENTS,
         'form': form,
         'show_form': request.method == 'POST',
         'nav': 'pipeline',

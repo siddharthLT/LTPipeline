@@ -441,3 +441,11 @@ th.gantt__acct.gantt__head { padding-left: var(--s-4) !important; }
 .pw__toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; }
 .pw__toggle:hover { color: var(--ink); background: var(--surface-2); }
 .pw__toggle[aria-pressed="true"] { color: var(--teal-deep); }
+
+/* Dashboard filters */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
+.filters__search { position: relative; flex: 1 1 260px; max-width: 420px; display: block; }
+.filters__search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .55; pointer-events: none; }
+.filters__search input { padding-left: 36px; width: 100%; }
+.filters__sel select { min-width: 170px; }
+.filters__count { margin-left: auto; font-size: 13px; opacity: .7; }

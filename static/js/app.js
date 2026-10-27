@@ -146,3 +146,31 @@ document.addEventListener('click', function (e) {
   t.querySelector('.pw__eye-off').hidden = !show;
   input.focus();
 });
+
+// Dashboard: filter accounts by search text, segment and stage.
+(function () {
+  var form = document.getElementById('filters');
+  if (!form) return;
+  var q = document.getElementById('f-q'), seg = document.getElementById('f-segment'),
+      stg = document.getElementById('f-stage'), clear = document.getElementById('f-clear'),
+      count = document.getElementById('f-count'), empty = document.getElementById('f-empty');
+  var rows = Array.from(document.querySelectorAll('tr[data-row]'));
+  function apply() {
+    var text = q.value.trim().toLowerCase(), shown = 0;
+    rows.forEach(function (r) {
+      var ok = (!text || r.dataset.text.indexOf(text) !== -1) &&
+               (!seg.value || r.dataset.segment === seg.value) &&
+               (stg.value === '' || r.dataset.stage === stg.value);
+      r.hidden = !ok;
+      var d = document.getElementById(r.dataset.row);
+      if (d && !ok) d.hidden = true;
+      if (ok) shown++;
+    });
+    empty.hidden = shown !== 0;
+    count.textContent = shown + ' of ' + rows.length;
+    clear.hidden = !(text || seg.value || stg.value !== '');
+  }
+  [q, seg, stg].forEach(function (el) { el.addEventListener('input', apply); el.addEventListener('change', apply); });
+  clear.addEventListener('click', function () { q.value = ''; seg.value = ''; stg.value = ''; apply(); });
+  apply();
+})();

@@ -15,9 +15,19 @@ def normalize_domain(value):
     return host.removeprefix('www.')
 
 
+SEGMENTS = [
+    ('cdmo', 'CDMO'),
+    ('cro', 'CRO'),
+    ('reagents', 'Reagents & formulation'),
+    ('equipment', 'Equipment'),
+    ('other', 'Other'),
+]
+
+
 class Account(models.Model):
     # 1. Company
     name = models.CharField(max_length=200)
+    segment = models.CharField(max_length=12, choices=SEGMENTS, blank=True)
     domain = models.CharField(max_length=253, unique=True)
     deal_value = models.CharField(max_length=40, blank=True, help_text='e.g. $15K')
 

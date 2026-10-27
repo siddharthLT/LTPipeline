@@ -52,8 +52,8 @@ class AccountForm(forms.ModelForm):
 
 class CompanyForm(StyledMixin, AccountForm):
     class Meta(AccountForm.Meta):
-        fields = ['name', 'domain', 'deal_value']
-        labels = {'name': 'Company name', 'domain': 'Company domain URL', 'deal_value': 'Deal value'}
+        fields = ['name', 'domain', 'segment', 'deal_value']
+        labels = {'segment': 'Segment', 'name': 'Company name', 'domain': 'Company domain URL', 'deal_value': 'Deal value'}
         widgets = {'deal_value': forms.TextInput(attrs={'placeholder': '$15K'})}
 
     def __init__(self, *args, **kwargs):
