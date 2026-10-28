@@ -1,0 +1,48 @@
+{% extends "app.html" %}
+{% block title %}Health check · Lunartree{% endblock %}
+{% block page_class %}page--health{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Health check</span>
+  <h1 class="t-h1">How much of each account is filled in</h1>
+  <p class="t-meta">{{ account_count }} accounts by {{ field_count }} fields. <span class="dot dot--ok" aria-hidden="true"></span> filled, <span class="dot dot--no" aria-hidden="true"></span> empty. Overall {{ overall }}% filled.</p>
+  <p class="t-meta health__sort">Sort:
+    <a href="?sort=least" {% if sort == 'least' %}aria-current="true"{% endif %}>Least filled</a>
+    <a href="?sort=most" {% if sort == 'most' %}aria-current="true"{% endif %}>Most filled</a>
+    <a href="?sort=name" {% if sort == 'name' %}aria-current="true"{% endif %}>Name</a>
+  </p>
+</header>
+
+<section class="card health">
+  <div class="health__scroll">
+    <table class="health__table">
+      <thead>
+        <tr class="health__groups">
+          <th class="health__acct" rowspan="2" scope="col">Account</th>
+          <th class="health__pct" rowspan="2" scope="col">Filled</th>
+          {% for name, span in groups %}<th colspan="{{ span }}" scope="colgroup">{{ name }}</th>{% endfor %}
+        </tr>
+        <tr class="health__cols">
+          {% for label in columns %}<th scope="col"><span>{{ label }}</span></th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <th class="health__acct" scope="row"><a href="{% url 'pipeline:account_detail' r.account.pk %}">{{ r.account.name }}</a></th>
+          <td class="health__pct"><span class="health__bar" style="--p: {{ r.percent }}%"></span><span class="mono">{{ r.percent }}%</span></td>
+          {% for c in r.cells %}<td>{% if c %}<span class="dot dot--ok" title="Filled"></span><span class="sr">filled</span>{% else %}<span class="dot dot--no" title="Empty"></span><span class="sr">empty</span>{% endif %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="health__acct" scope="row">All accounts</th>
+          <td class="health__pct"><span class="mono">{{ overall }}%</span></td>
+          {% for p in footer %}<td class="mono health__foot">{{ p }}%</td>{% endfor %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+{% endblock %}

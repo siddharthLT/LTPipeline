@@ -220,3 +220,63 @@ def rules(request):
         'stages': stages, 'path': PATH, 'usage_checks': [label for _, label in USAGE_CHECKS],
         'total_days': sum(STAGE_DAYS.values()), 'nav': 'rules',
     })
+
+
+# Health check: every Account field, grouped like the account page. (attr, column label)
+HEALTH_GROUPS = [
+    ('Company', [('segment', 'Segment'), ('domain', 'Domain'), ('deal_value', 'Deal value')]),
+    ('What they do', [('what_they_do', 'What they do'), ('what_they_service', 'What they service'),
+                      ('who_they_service', 'Who they service')]),
+    ('Profile', [('modality', 'Modality'), ('therapeutic_focus', 'Therapeutic focus'), ('trial_phase', 'Trial phase'),
+                 ('geography', 'Geography')]),
+    ('ICP', [('icp', 'ICP'), ('icp_source', 'ICP source')]),
+    ('Deal snapshot', [('buyer', 'Buyer'), ('champion', 'Champion'), ('users', 'Users'), ('blockers', 'Blockers'),
+                       ('must_happen', 'Must happen'), ('biggest_risk', 'Biggest risk'), ('next_action', 'Next action'),
+                       ('next_action_owner', 'Action owner'), ('next_action_date', 'Action date')]),
+    ('Usage checks', [('usage_tried', 'Tried'), ('usage_value', 'Reached value'), ('usage_onboarded', 'Onboarded'),
+                      ('integration_started', 'Integration started')]),
+    ('Buying thesis', [('why_buy', 'Why buy'), ('pain_now', 'Pain now'), ('who_cares', 'Who cares'),
+                       ('buying_first', 'Buying first'), ('before_pay', 'Before pay'), ('expand_when', 'Expand when'),
+                       ('why_not', 'Why not')]),
+    ('Pilot and annual', [('trial_note', 'Trial note'), ('expected_credits', 'Expected credits'),
+                          ('pilot_value', 'Pilot value'), ('pilot_date', 'Pilot date'), ('annual_value', 'Annual value'),
+                          ('annual_date', 'Annual date'), ('expansion_trigger', 'Expansion trigger')]),
+    ('Activity', [('_events', 'Timeline'), ('_emails', 'Sent emails'), ('_meetings', 'Meeting notes'),
+                  ('_open_tasks', 'Open action')]),
+]
+
+
+@login_required
+def health_check(request):
+    accounts = list(Account.objects.prefetch_related('tasks', 'events', 'emails', 'meetings'))
+    columns = [(attr, label) for _, fields in HEALTH_GROUPS for attr, label in fields]
+    totals = dict.fromkeys((c[0] for c in columns), 0)
+    rows = []
+    for a in accounts:
+        extra = {'_events': bool(a.events.all()), '_emails': bool(a.emails.all()), '_meetings': bool(a.meetings.all()),
+                 '_open_tasks': any(not t.done for t in a.tasks.all())}
+        cells = []
+        for attr, _ in columns:
+            value = extra[attr] if attr in extra else getattr(a, attr)
+            filled = bool(value.strip()) if isinstance(value, str) else bool(value)
+            totals[attr] += filled
+            cells.append(filled)
+        done = sum(cells)
+        rows.append({'account': a, 'cells': cells, 'filled': done, 'percent': round(done / len(cells) * 100)})
+    sort = request.GET.get('sort', 'least')
+    if sort == 'name':
+        rows.sort(key=lambda r: r['account'].name.lower())
+    elif sort == 'most':
+        rows.sort(key=lambda r: (-r['percent'], r['account'].name.lower()))
+    else:
+        sort = 'least'
+        rows.sort(key=lambda r: (r['percent'], r['account'].name.lower()))
+    n = len(rows) or 1
+    footer = [round(totals[attr] / n * 100) for attr, _ in columns]
+    return render(request, 'pipeline/health_check.html', {
+        'groups': [(name, len(fields)) for name, fields in HEALTH_GROUPS],
+        'columns': [label for _, label in columns],
+        'rows': rows, 'footer': footer, 'sort': sort,
+        'overall': round(sum(r['filled'] for r in rows) / (n * len(columns)) * 100),
+        'field_count': len(columns), 'account_count': len(rows), 'nav': 'health',
+    })

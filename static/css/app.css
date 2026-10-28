@@ -515,3 +515,30 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__set .arr__pct input { width: 96px; flex: 0 0 96px; padding-left: 14px; padding-right: 14px; text-align: left; box-sizing: border-box; }
 .arr__unit { font-size: var(--fs-sm); color: var(--ink-2); }
 
+
+/* ---- health check grid ---- */
+.page.page--health { max-width: none; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
+.dot--ok { background: #1F9D55; }
+.dot--no { background: #D6403A; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.health__sort a { margin-right: var(--s-3); color: var(--teal-deep); }
+.health__sort a[aria-current] { font-weight: 600; text-decoration: underline; }
+.health { padding: 0; overflow: hidden; }
+.health__scroll { overflow: auto; max-height: calc(100vh - 220px); }
+.health__table { border-collapse: separate; border-spacing: 0; font-size: var(--fs-meta); }
+.health__table th, .health__table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; background: var(--canvas); }
+.health__table thead th { position: sticky; top: 0; z-index: 2; font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.health__table .health__groups th { border-left: 1px solid var(--line); }
+.health__table .health__cols th { top: 33px; height: 120px; vertical-align: bottom; padding: 6px 2px; }
+.health__table .health__cols th span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+.health__table tfoot th, .health__table tfoot td { position: sticky; bottom: 0; z-index: 2; border-top: 1px solid var(--line); }
+.health__acct { position: sticky; left: 0; z-index: 3; text-align: left !important; min-width: 220px; font-weight: 600; border-right: 1px solid var(--line); }
+.health__table thead .health__acct { z-index: 4; }
+.health__acct a { color: var(--ink); text-decoration: none; }
+.health__acct a:hover { color: var(--teal-deep); text-decoration: underline; }
+.health__pct { position: sticky; left: 220px; z-index: 3; min-width: 96px; text-align: left !important; border-right: 1px solid var(--line); }
+.health__table thead .health__pct { z-index: 4; }
+.health__pct .mono { margin-left: 8px; font-size: var(--fs-label); }
+.health__bar { display: inline-block; width: 36px; height: 6px; border-radius: 3px; background: linear-gradient(to right, #1F9D55 var(--p), var(--surface-2) var(--p)); vertical-align: middle; }
+.health__foot { font-size: var(--fs-micro); color: var(--ink-2); }
