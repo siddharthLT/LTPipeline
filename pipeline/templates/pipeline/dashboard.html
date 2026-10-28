@@ -111,6 +111,12 @@
               <span class="gantt__co clamp-1">{{ account.name }}</span>
               <span class="gantt__dom mono clamp-1">{{ account.domain }}</span>
             </a>
+            {% if account.key_connections %}
+            <span class="gantt__conn" tabindex="0" title="Connection through {{ account.key_connections|join:' and ' }}" aria-label="Connection through {{ account.key_connections|join:' and ' }}">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></svg>
+              <span class="gantt__tip">Connected through {{ account.key_connections|join:' and ' }}</span>
+            </span>
+            {% endif %}
             <a class="icon-btn icon-btn--sm gantt__edit" href="{% url 'pipeline:account_detail' account.pk %}#stages" aria-label="Update stages for {{ account.name }}">{% include "partials/pen.html" %}</a>
           </th>
           {% for c in account.cells %}
