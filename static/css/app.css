@@ -512,5 +512,15 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__set select { min-width: 200px; }
 .arr__pct { display: flex; align-items: center; gap: 6px; }
 .arr__pct input { width: 80px; }
-.arr__set .arr__pct input { width: 84px; flex: 0 0 84px; }
+.arr__set .arr__pct input { width: 96px; flex: 0 0 96px; padding-left: 14px; padding-right: 14px; text-align: left; box-sizing: border-box; }
 .arr__unit { font-size: var(--fs-sm); color: var(--ink-2); }
+
+/* Signed customers */
+.signed { padding: var(--s-5); margin-bottom: var(--s-5); }
+.signed__title { font-size: var(--fs-h3, 18px); margin: 0 0 4px; display: flex; gap: var(--s-3); align-items: baseline; }
+.signed__list { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.signed__list li { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; padding: var(--s-3) var(--s-4); border: 1px solid var(--line, #e3e6e4); border-radius: 10px; }
+.signed__list a { display: grid; flex: 1 1 140px; min-width: 0; text-decoration: none; color: inherit; }
+.signed__co { font-weight: 600; }
+.signed__dom { font-size: var(--fs-sm); color: var(--ink-2); }
+.signed__seg, .signed__val { font-size: var(--fs-sm); }

@@ -54,8 +54,12 @@ def dashboard(request):
         a.next_stage_info = a.next_stage
         sched = a.schedule()
         a.contract_info = sched[11]
+    forecast = build_forecast(accounts, cycle_months=cycle, conversion=conv / 100)
+    signed = [a for a in accounts if a.score == 100]
+    accounts = [a for a in accounts if a.score < 100]
     return render(request, 'pipeline/dashboard.html', {
-        'forecast': build_forecast(accounts, cycle_months=cycle, conversion=conv / 100),
+        'forecast': forecast,
+        'signed': signed,
         'accounts': accounts,
         'stages': STAGES,
         'segments': SEGMENTS,
