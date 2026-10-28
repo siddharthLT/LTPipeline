@@ -63,6 +63,7 @@ def build(accounts, today=None, cycle_months=DEFAULT_CYCLE_MONTHS, conversion=DE
         due = today if info['done'] else today + datetime.timedelta(days=round(max((info['date'] - today).days, 0) * factor))
         deals.append({'name': a.name, 'date': due, 'p': 1.0 if info['done'] else close_probability(a.score, conversion),
                       'arr': parse_arr(a.deal_value) or DEFAULT_ARR})
+    signed = [d['name'] for d in deals if d['p'] == 1.0]
     points, chosen = [], []
     for m in range(MONTHS + 1):
         cutoff = add_months(today, m)
@@ -76,8 +77,8 @@ def build(accounts, today=None, cycle_months=DEFAULT_CYCLE_MONTHS, conversion=DE
         points.append({
             'month': m, 'date': cutoff.strftime('%b %-d, %Y'),
             'accounts': len(chosen), 'arr': arr, 'users': round(arr / USER_PRICE),
-            'names': [d['name'] for d in chosen],
+            'names': [d['name'] for d in chosen if d['name'] not in signed],
             'best_accounts': len(hit), 'best_arr': best, 'best_users': round(best / USER_PRICE),
         })
-    return {'points': points, 'user_price': USER_PRICE, 'total': len(deals),
+    return {'points': points, 'signed': signed, 'user_price': USER_PRICE, 'total': len(deals),
             'cycle_months': cycle_months, 'conversion': round(conversion * 100)}

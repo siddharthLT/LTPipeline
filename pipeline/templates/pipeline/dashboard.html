@@ -50,22 +50,11 @@
     <input type="range" id="arr-range" min="0" max="12" step="1" value="12" aria-label="Months from today">
     <div class="arr__ticks mono" aria-hidden="true"><span>Today</span><span>6 mo</span><span>12 mo</span></div>
   </div>
+  <p class="t-meta arr__names"><strong>Already signed:</strong> <span id="arr-signed"></span></p>
   <p class="t-meta arr__names"><strong>Expected to sign:</strong> <span id="arr-names"></span></p>
   <p class="t-meta arr__foot">Deal values come from team size in sales and marketing (&gt;100: $50K, 20&ndash;100: $30K, under 20: $15K a year), unless set on the account. Users assume ${{ forecast.user_price }} per user a year.</p>
   {{ forecast|json_script:"arr-data" }}
 </section>
-
-{% if signed %}
-<section class="signed card" aria-label="Signed customers">
-  <h2 class="signed__title">Signed customers <span class="mono">{{ signed|length }}</span></h2>
-  <p class="t-meta">Every step done. These move out of the pipeline table once they reach 100%.</p>
-  <ul class="signed__list">
-    {% for a in signed %}
-    <li><a href="{% url 'pipeline:account_detail' a.pk %}"><span class="signed__co">{{ a.name }}</span><span class="signed__dom mono">{{ a.domain }}</span></a>{% if a.segment %}<span class="signed__seg t-muted">{{ a.get_segment_display }}</span>{% endif %}{% if a.deal_value %}<span class="signed__val mono">{{ a.deal_value }}/yr</span>{% endif %}</li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
 
 <form class="filters" id="filters" role="search" aria-label="Filter accounts" onsubmit="return false">
   <label class="filters__search">

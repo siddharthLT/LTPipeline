@@ -236,7 +236,7 @@ document.addEventListener('click', function (e) {
 (function () {
   var dataEl = document.getElementById('arr-data');
   if (!dataEl) return;
-  var pts = JSON.parse(dataEl.textContent).points;
+  var data = JSON.parse(dataEl.textContent), pts = data.points;
   var svg = document.getElementById('arr-svg'), range = document.getElementById('arr-range');
   var W = 640, H = 280, L = 56, R = 16, T = 16, B = 30;
   var max = Math.max.apply(null, pts.map(function (p) { return p.best_arr; })) || 1;
@@ -269,6 +269,7 @@ document.addEventListener('click', function (e) {
     document.getElementById('arr-when').textContent = p.month ? p.date + ' · ' + p.month + ' month' + (p.month > 1 ? 's' : '') + ' out' : 'Today · ' + p.date;
     document.getElementById('arr-accounts').textContent = p.accounts;
     document.getElementById('arr-names').textContent = p.names.length ? p.names.join(', ') : 'None yet';
+    document.getElementById('arr-signed').textContent = data.signed.length ? data.signed.join(', ') : 'None yet';
     document.getElementById('arr-arr').textContent = money(p.arr);
     document.getElementById('arr-users').textContent = p.users;
     document.getElementById('arr-accounts-b').textContent = 'best case ' + p.best_accounts;
