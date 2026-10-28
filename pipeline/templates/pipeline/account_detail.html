@@ -241,6 +241,8 @@
       <dt>Domain</dt><dd class="mono">{{ account.domain }}</dd>
       <dt>Segment</dt><dd>{% if account.segment %}{{ account.get_segment_display }}{% else %}<span class="t-muted">Not set</span>{% endif %}</dd>
       <dt>Deal value</dt><dd>{% if account.deal_value %}{{ account.deal_value }}{% else %}<span class="t-muted">Not set</span>{% endif %}</dd>
+      <dt>Sales and marketing team</dt><dd>{% if account.sales_marketing_team %}{{ account.sales_marketing_team }}{% else %}<span class="t-muted">Not set</span>{% endif %}</dd>
+      <dt>Advisors</dt><dd>{% if account.advisors %}{{ account.advisors }}{% else %}<span class="t-muted">None</span>{% endif %}</dd>
     </dl>
   </div>
 </section>

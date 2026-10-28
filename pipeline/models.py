@@ -30,6 +30,9 @@ class Account(models.Model):
     segment = models.CharField(max_length=12, choices=SEGMENTS, blank=True)
     domain = models.CharField(max_length=253, unique=True)
     deal_value = models.CharField(max_length=40, blank=True, help_text='e.g. $15K')
+    sales_marketing_team = models.PositiveIntegerField(null=True, blank=True, help_text='People in sales and marketing (Apollo)')
+    team_size_source = models.CharField(max_length=300, blank=True)
+    advisors = models.CharField(max_length=200, blank=True, help_text='Advisors who connect us: Abhishek, Lavanya, Mak, PK, Naren')
 
     # 2. What they do, service, and who they service
     what_they_do = models.TextField(blank=True)

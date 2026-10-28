@@ -232,32 +232,37 @@ document.addEventListener('click', function (e) {
   dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
 })();
 
-// Dashboard: ARR forecast chart with a month slider.
+// Dashboard: ARR forecast chart, stacked by tier, with a month slider.
 (function () {
   var dataEl = document.getElementById('arr-data');
   if (!dataEl) return;
-  var data = JSON.parse(dataEl.textContent), pts = data.points;
+  var data = JSON.parse(dataEl.textContent), pts = data.points, N = data.months, tiers = data.tiers;
   var svg = document.getElementById('arr-svg'), range = document.getElementById('arr-range');
   var W = 640, H = 280, L = 56, R = 16, T = 16, B = 30;
-  var max = Math.max.apply(null, pts.map(function (p) { return p.best_arr; })) || 1;
+  // Scale to the expected line; the best case runs off the top when it is far above.
+  var max = Math.max.apply(null, pts.map(function (p) { return p.arr; })) * 1.3 || 1;
   var step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step;
-  function x(m) { return L + (W - L - R) * m / 12; }
-  function y(v) { return T + (H - T - B) * (1 - v / top); }
+  function x(m) { return L + (W - L - R) * m / N; }
+  function y(v) { return T + (H - T - B) * (1 - Math.min(v, top) / top); }
   function money(v) { return v >= 1e6 ? '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : '$' + Math.round(v / 1000) + 'K'; }
-  function line(key) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.month).toFixed(1) + ' ' + y(p[key]).toFixed(1); }).join(' '); }
+  function path(fn) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.month).toFixed(1) + ' ' + y(fn(p)).toFixed(1); }).join(' '); }
+  function stack(upto) { return function (p) { var s = 0; for (var i = 0; i <= upto; i++) s += p.by_tier[tiers[i].key]; return s; }; }
   var g = '';
   for (var i = 0; i <= 4; i++) {
     var v = top * i / 4;
     g += '<line class="arr__grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
          '<text class="arr__axis" x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + money(v) + '</text>';
   }
-  [0, 3, 6, 9, 12].forEach(function (m) {
+  for (var m = 0; m <= N; m += 3) {
     g += '<text class="arr__axis" x="' + x(m) + '" y="' + (H - 8) + '" text-anchor="middle">' + (m ? m + ' mo' : 'Today') + '</text>';
-  });
+  }
+  var areas = '';
+  for (var k = tiers.length - 1; k >= 0; k--) {
+    areas += '<path class="arr__area arr__area--' + tiers[k].key + '" d="' + path(stack(k)) + ' L' + x(N) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>';
+  }
   svg.innerHTML = g +
-    '<path class="arr__best" d="' + line('best_arr') + '"/>' +
-    '<path class="arr__area" d="' + line('arr') + ' L' + x(12) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>' +
-    '<path class="arr__line" d="' + line('arr') + '"/>' +
+    '<path class="arr__best" d="' + path(function (p) { return p.best_arr; }) + '"/>' + areas +
+    '<path class="arr__line" d="' + path(function (p) { return p.arr; }) + '"/>' +
     '<line class="arr__cursor" id="arr-cur" y1="' + T + '" y2="' + (H - B) + '"/>' +
     '<circle class="arr__dot" id="arr-dot" r="6"/><circle class="arr__dot arr__dot--b" id="arr-dotb" r="4"/>';
   var cur = document.getElementById('arr-cur'), dot = document.getElementById('arr-dot'), dotb = document.getElementById('arr-dotb');
@@ -266,15 +271,18 @@ document.addEventListener('click', function (e) {
     cur.setAttribute('x1', x(p.month)); cur.setAttribute('x2', x(p.month));
     dot.setAttribute('cx', x(p.month)); dot.setAttribute('cy', y(p.arr));
     dotb.setAttribute('cx', x(p.month)); dotb.setAttribute('cy', y(p.best_arr));
-    document.getElementById('arr-when').textContent = p.month ? p.date + ' · ' + p.month + ' month' + (p.month > 1 ? 's' : '') + ' out' : 'Today · ' + p.date;
+    document.getElementById('arr-when').textContent = p.month ? p.date + ' \u00b7 ' + p.month + ' month' + (p.month > 1 ? 's' : '') + ' out' : 'Today \u00b7 ' + p.date;
     document.getElementById('arr-accounts').textContent = p.accounts;
     document.getElementById('arr-names').textContent = p.names.length ? p.names.join(', ') : 'None yet';
     document.getElementById('arr-signed').textContent = data.signed.length ? data.signed.join(', ') : 'None yet';
     document.getElementById('arr-arr').textContent = money(p.arr);
-    document.getElementById('arr-users').textContent = p.users;
+    document.getElementById('arr-credits').textContent = p.credits >= 1e6 ? (p.credits / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : Math.round(p.credits / 1000) + 'K';
     document.getElementById('arr-accounts-b').textContent = 'best case ' + p.best_accounts;
     document.getElementById('arr-arr-b').textContent = 'best case ' + money(p.best_arr);
-    document.getElementById('arr-users-b').textContent = 'best case ' + p.best_users;
+    document.getElementById('arr-tiers').innerHTML = tiers.map(function (t) {
+      return '<li><span class="arr__swatch arr__swatch--' + t.key + '"></span>' + t.name + ' <b class="mono">' + p.count_tier[t.key] +
+             '</b> <span class="mono t-muted">' + money(p.by_tier[t.key]) + '</span></li>';
+    }).join('');
   }
   range.addEventListener('input', show);
   show();

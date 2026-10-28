@@ -289,29 +289,49 @@ class ForecastTests(TestCase):
         self.assertLess(close_probability(5, 0.2), 0.2)              # before the first call
         self.assertGreater(close_probability(50, 0.2), 0.2)
 
-    def test_build_whole_accounts_cycle_and_conversion(self):
+    def _acct(self, name, score, val, days, team=None, advisors='', text='', done=False):
         import datetime
         from types import SimpleNamespace as NS
-        from .forecast import build
         today = datetime.date(2026, 10, 27)
+        return NS(name=name, score=score, deal_value=val, sales_marketing_team=team, advisors=advisors, signal_text=text,
+                  contract_info={'done': done, 'date': today + datetime.timedelta(days=days)})
 
-        def acct(name, score, val, days):
-            return NS(name=name, score=score, deal_value=val,
-                      contract_info={'done': False, 'date': today + datetime.timedelta(days=days)})
-        # 135 days is the cold span; a 3 month cycle squeezes it to about 91 days
-        a = acct('A', 15, '$30K', 135)
-        b = acct('B', 15, '$50K', 135)
-        c = acct('C', 15, '', 135)
-        pts = build([a, b, c], today, cycle_months=3, conversion=0.5)['points']
-        self.assertEqual(pts[2]['accounts'], 0)                      # nothing due inside 2 months
-        self.assertEqual(pts[3]['accounts'], 2)                      # 3 x 0.5 = 1.5 -> 2 accounts due by month 3
-        self.assertEqual(pts[3]['best_accounts'], 3)
-        self.assertEqual(len(pts[3]['names']), 2)
-        slow = build([a, b, c], today, cycle_months=6, conversion=0.5)['points']
-        self.assertEqual(slow[3]['accounts'], 0)                     # conservative cycle pushes them out
-        self.assertGreaterEqual(slow[12]['accounts'], 1)
+    def test_predict_tier(self):
+        from .forecast import predict_tier
+        tier = lambda **kw: predict_tier(self._acct('A', 10, kw.pop('val', ''), 100, **kw), kw.get('done', False))
+        self.assertEqual(tier(team=5)[0]['name'], 'Starter')
+        self.assertEqual(tier(team=40)[0]['name'], 'Growth')
+        self.assertEqual(tier(team=400)[1], 72000)
+        self.assertEqual(tier(team=5, text='wants Salesforce sync')[0]['name'], 'Growth')
+        self.assertEqual(tier(team=5, text='needs a dedicated instance')[0]['name'], 'Enterprise')
+        self.assertEqual(tier(team=5, val='$20K')[1], 36000)         # nothing below Starter
+        self.assertEqual(tier(team=5, val='$60K')[1], 60000)         # a real estimate of $36K or more wins
+        arr = predict_tier(self._acct('S', 100, '$45K', 0, team=3), True)
+        self.assertEqual((arr[0]['name'], arr[1]), ('Growth', 45000))
+
+    def test_build_timing_and_tiers(self):
+        import datetime
+        from .forecast import build, advisor_names
+        today = datetime.date(2026, 10, 27)
+        self.assertEqual(advisor_names('Mak and PK, not Madhu'), ['Mak', 'PK'])
+        warm = self._acct('Warm', 15, '', 135, team=300, advisors='Mak')
+        cold = self._acct('Cold', 15, '', 135, team=5)
+        out = build([warm, cold], today, cycle_months=3, conversion=0.5)
+        by = {e['name']: e for e in out['entries']}
+        # large team with an advisor keeps the 91 day cycle plus the Enterprise security review; small team, no advisor is slower
+        self.assertEqual((by['Warm']['date'] - today).days, 91 + 45)
+        self.assertGreater(by['Cold']['date'], by['Warm']['date'])
+        self.assertEqual((by['Warm']['tier'], by['Cold']['tier']), ('Enterprise', 'Starter'))
+        pts = out['points']
+        self.assertEqual(len(pts), 19)
+        self.assertEqual(pts[0]['accounts'], 0)
+        self.assertEqual(pts[18]['accounts'], 1)                      # 2 x 0.5 = 1 account, the likelier is chosen
+        self.assertEqual(pts[18]['by_tier']['enterprise'] + pts[18]['by_tier']['starter'], pts[18]['arr'])
         arr = [p['arr'] for p in pts]
         self.assertEqual(arr, sorted(arr))
+        done = build([self._acct('Live', 100, '$45K', 0, done=True)], today)
+        self.assertEqual(done['signed'], ['Live'])
+        self.assertEqual(done['points'][0]['arr'], 45000)
 
     def test_dashboard_shows_forecast(self):
         from django.contrib.auth import get_user_model

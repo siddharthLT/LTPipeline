@@ -52,9 +52,11 @@ class AccountForm(forms.ModelForm):
 
 class CompanyForm(StyledMixin, AccountForm):
     class Meta(AccountForm.Meta):
-        fields = ['name', 'domain', 'segment', 'deal_value']
-        labels = {'segment': 'Segment', 'name': 'Company name', 'domain': 'Company domain URL', 'deal_value': 'Deal value'}
-        widgets = {'deal_value': forms.TextInput(attrs={'placeholder': '$15K'})}
+        fields = ['name', 'domain', 'segment', 'deal_value', 'sales_marketing_team', 'advisors']
+        labels = {'segment': 'Segment', 'name': 'Company name', 'domain': 'Company domain URL', 'deal_value': 'Deal value',
+                  'sales_marketing_team': 'Sales and marketing team size', 'advisors': 'Advisors who connect us'}
+        widgets = {'deal_value': forms.TextInput(attrs={'placeholder': '$15K'}),
+                   'advisors': forms.TextInput(attrs={'placeholder': 'Mak, PK'})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

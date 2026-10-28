@@ -21,9 +21,9 @@
   <div class="arr__head">
     <div>
       <span class="eyebrow">Forecast</span>
-      <h2 class="t-h2">ARR over the next 12 months</h2>
+      <h2 class="t-h2">ARR over the next 18 months</h2>
     </div>
-    <p class="t-meta arr__note">Expected = whole accounts: the most likely ones among those due by that date. An account that has just had its first call has the chance set here, rising to 100% at contract. ARR is their deal values. Best case counts every account due. Your scores are not changed.</p>
+    <p class="t-meta arr__note">Each account is predicted to sign at Starter, Growth or Enterprise, and when. Expected = whole accounts: the most likely ones among those due by that date. An account that has just had its first call has the chance set here, rising to 100% at contract. Best case counts every account due. Your scores are not changed.</p>
   </div>
   <form class="arr__set" method="get" action="{% url 'pipeline:dashboard' %}#arr" aria-label="Forecast assumptions">
     <label>Sales cycle for a cold account
@@ -42,17 +42,36 @@
     <dl class="arr__stats">
       <div class="arr__stat"><dt>Accounts signed</dt><dd class="mono" id="arr-accounts">0</dd><span class="arr__sub mono" id="arr-accounts-b"></span></div>
       <div class="arr__stat"><dt>ARR</dt><dd class="mono" id="arr-arr">$0</dd><span class="arr__sub mono" id="arr-arr-b"></span></div>
-      <div class="arr__stat"><dt>Users</dt><dd class="mono" id="arr-users">0</dd><span class="arr__sub mono" id="arr-users-b"></span></div>
+      <div class="arr__stat"><dt>Credits included a year</dt><dd class="mono" id="arr-credits">0</dd></div>
     </dl>
   </div>
+  <ul class="arr__tiers" id="arr-tiers" aria-label="Expected ARR by tier"></ul>
   <div class="arr__slide">
     <label for="arr-range"><span class="arr__when mono" id="arr-when"></span></label>
-    <input type="range" id="arr-range" min="0" max="12" step="1" value="12" aria-label="Months from today">
-    <div class="arr__ticks mono" aria-hidden="true"><span>Today</span><span>6 mo</span><span>12 mo</span></div>
+    <input type="range" id="arr-range" min="0" max="18" step="1" value="18" aria-label="Months from today">
+    <div class="arr__ticks mono" aria-hidden="true"><span>Today</span><span>6 mo</span><span>12 mo</span><span>18 mo</span></div>
   </div>
   <p class="t-meta arr__names"><strong>Already signed:</strong> <span id="arr-signed"></span></p>
   <p class="t-meta arr__names"><strong>Expected to sign:</strong> <span id="arr-names"></span></p>
-  <p class="t-meta arr__foot">Deal values come from team size in sales and marketing (&gt;100: $50K, 20&ndash;100: $30K, under 20: $15K a year), unless set on the account. Users assume ${{ forecast.user_price }} per user a year.</p>
+  <p class="t-meta arr__foot">Tier and ARR (unlimited seats a year): Starter $36K, Growth $48K, Enterprise $72K. Signed accounts use their contract. Others come from sales and marketing team size (under 20 Starter, 20&ndash;99 Growth, 100+ Enterprise), move up when they asked for CRM sync or security and hosting terms, and use the deal value when it is $36K or more. Nothing is forecast below $36K. Timing stretches the time left by team size (small x1.6, mid x1.25), by no advisor connection (x1.5; advisors are Abhishek, Lavanya, Mak, PK and Naren), and adds 45 days of security review for Enterprise.</p>
+  <details class="arr__entries">
+    <summary>Predicted entries by account ({{ forecast.entries|length }})</summary>
+    <div class="table-scroll">
+      <table class="rules-table arr__table">
+        <thead><tr><th>Account</th><th>Tier</th><th>ARR</th><th>Expected</th><th>Chance</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for e in forecast.entries %}
+          <tr{% if e.counted %} class="is-counted"{% endif %}>
+            <td>{% if e.pk %}<a href="{% url 'pipeline:account_detail' e.pk %}">{{ e.name }}</a>{% else %}{{ e.name }}{% endif %}</td>
+            <td>{{ e.tier }}</td><td class="mono">${{ e.arr|floatformat:"0g" }}</td>
+            <td class="mono">{{ e.date|date:"M Y" }}</td><td class="mono">{{ e.chance }}%</td>
+            <td class="t-muted">{{ e.reasons|join:" · " }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
   {{ forecast|json_script:"arr-data" }}
 </section>
 

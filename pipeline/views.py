@@ -36,6 +36,17 @@ def _number(raw, default, low, high):
         return default
 
 
+SIGNAL_FIELDS = ('buyer', 'champion', 'users', 'blockers', 'must_happen', 'biggest_risk', 'next_action', 'pain_now',
+                 'why_buy', 'before_pay', 'expand_when', 'expansion_trigger')
+
+
+def _signal_text(account):
+    """Everything we have written about an account, scanned for what it has asked for (CRM sync, security, hosting)."""
+    parts = [getattr(account, f) for f in SIGNAL_FIELDS]
+    parts += [e.text for e in account.events.all()] + [t.title for t in account.tasks.all()]
+    return ' '.join(parts)
+
+
 @login_required
 @require_http_methods(['GET', 'POST'])
 def dashboard(request):
@@ -43,7 +54,7 @@ def dashboard(request):
     if request.method == 'POST' and form.is_valid():
         account = form.save()
         return redirect('pipeline:account_detail', pk=account.pk)
-    accounts = list(Account.objects.prefetch_related('stage_progress', 'tasks'))
+    accounts = list(Account.objects.prefetch_related('stage_progress', 'tasks', 'events'))
     accounts.sort(key=lambda a: (-a.score, a.name.lower()))
     cycle = _number(request.GET.get('cycle'), DEFAULT_CYCLE_MONTHS, 1, 24)
     conv = _number(request.GET.get('conv'), round(DEFAULT_CONVERSION * 100), 1, 100)
@@ -54,6 +65,7 @@ def dashboard(request):
         a.next_stage_info = a.next_stage
         sched = a.schedule()
         a.contract_info = sched[11]
+        a.signal_text = _signal_text(a)
     forecast = build_forecast(accounts, cycle_months=cycle, conversion=conv / 100)
     return render(request, 'pipeline/dashboard.html', {
         'forecast': forecast,
@@ -224,7 +236,8 @@ def rules(request):
 
 # Health check: every Account field, grouped like the account page. (attr, column label)
 HEALTH_GROUPS = [
-    ('Company', [('segment', 'Segment'), ('domain', 'Domain'), ('deal_value', 'Deal value')]),
+    ('Company', [('segment', 'Segment'), ('domain', 'Domain'), ('deal_value', 'Deal value'),
+                ('sales_marketing_team', 'Sales and marketing team')]),
     ('What they do', [('what_they_do', 'What they do'), ('what_they_service', 'What they service'),
                       ('who_they_service', 'Who they service')]),
     ('Profile', [('modality', 'Modality'), ('therapeutic_focus', 'Therapeutic focus'), ('trial_phase', 'Trial phase'),

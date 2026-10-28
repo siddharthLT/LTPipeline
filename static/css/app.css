@@ -490,7 +490,20 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__grid { stroke: var(--line); stroke-width: 1; }
 .arr__axis { font-size: 11px; fill: var(--ink-2); }
 .arr__line { fill: none; stroke: var(--teal-deep); stroke-width: 2.5; stroke-linejoin: round; }
-.arr__area { fill: var(--teal-50); opacity: .8; }
+.arr__area { opacity: .85; }
+.arr__area--starter { fill: var(--teal-200); }
+.arr__area--growth { fill: var(--teal-300); }
+.arr__area--enterprise { fill: var(--teal); }
+.arr__tiers { display: flex; flex-wrap: wrap; gap: var(--s-4); list-style: none; margin: var(--s-3) 0 0; padding: 0; font-size: var(--fs-meta); }
+.arr__tiers li { display: flex; align-items: center; gap: 6px; }
+.arr__swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.arr__swatch--starter { background: var(--teal-200); }
+.arr__swatch--growth { background: var(--teal-300); }
+.arr__swatch--enterprise { background: var(--teal); }
+.arr__entries { margin-top: var(--s-4); }
+.arr__entries > summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); color: var(--teal-deep); }
+.arr__table { min-width: 720px; margin-top: var(--s-3); }
+.arr__table .is-counted td:first-child { font-weight: 600; }
 .arr__best { fill: none; stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .7; }
 .arr__cursor { stroke: var(--teal-deep); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
 .arr__dot { fill: var(--teal-deep); stroke: #fff; stroke-width: 2; }
