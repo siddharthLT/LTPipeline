@@ -490,10 +490,7 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__grid { stroke: var(--line); stroke-width: 1; }
 .arr__axis { font-size: 11px; fill: var(--ink-2); }
 .arr__line { fill: none; stroke: var(--teal-deep); stroke-width: 2.5; stroke-linejoin: round; }
-.arr__area { opacity: .85; }
-.arr__area--starter { fill: var(--teal-200); }
-.arr__area--growth { fill: var(--teal-300); }
-.arr__area--enterprise { fill: var(--teal); }
+.arr__area { fill: var(--teal-50); opacity: .8; }
 .arr__tiers { display: flex; flex-wrap: wrap; gap: var(--s-4); list-style: none; margin: var(--s-3) 0 0; padding: 0; font-size: var(--fs-meta); }
 .arr__tiers li { display: flex; align-items: center; gap: 6px; }
 .arr__swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }

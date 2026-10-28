@@ -236,7 +236,7 @@ document.addEventListener('click', function (e) {
 (function () {
   var dataEl = document.getElementById('arr-data');
   if (!dataEl) return;
-  var data = JSON.parse(dataEl.textContent), pts = data.points, N = data.months, tiers = data.tiers;
+  var data = JSON.parse(dataEl.textContent), pts = data.points, N = data.months;
   var svg = document.getElementById('arr-svg'), range = document.getElementById('arr-range');
   var W = 640, H = 280, L = 56, R = 16, T = 16, B = 30;
   // Scale to the expected line; the best case runs off the top when it is far above.
@@ -246,7 +246,6 @@ document.addEventListener('click', function (e) {
   function y(v) { return T + (H - T - B) * (1 - Math.min(v, top) / top); }
   function money(v) { return v >= 1e6 ? '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : '$' + Math.round(v / 1000) + 'K'; }
   function path(fn) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.month).toFixed(1) + ' ' + y(fn(p)).toFixed(1); }).join(' '); }
-  function stack(upto) { return function (p) { var s = 0; for (var i = 0; i <= upto; i++) s += p.by_tier[tiers[i].key]; return s; }; }
   var g = '';
   for (var i = 0; i <= 4; i++) {
     var v = top * i / 4;
@@ -256,12 +255,9 @@ document.addEventListener('click', function (e) {
   for (var m = 0; m <= N; m += 3) {
     g += '<text class="arr__axis" x="' + x(m) + '" y="' + (H - 8) + '" text-anchor="middle">' + (m ? m + ' mo' : 'Today') + '</text>';
   }
-  var areas = '';
-  for (var k = tiers.length - 1; k >= 0; k--) {
-    areas += '<path class="arr__area arr__area--' + tiers[k].key + '" d="' + path(stack(k)) + ' L' + x(N) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>';
-  }
+  var area = '<path class="arr__area" d="' + path(function (p) { return p.arr; }) + ' L' + x(N) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>';
   svg.innerHTML = g +
-    '<path class="arr__best" d="' + path(function (p) { return p.best_arr; }) + '"/>' + areas +
+    '<path class="arr__best" d="' + path(function (p) { return p.best_arr; }) + '"/>' + area +
     '<path class="arr__line" d="' + path(function (p) { return p.arr; }) + '"/>' +
     '<line class="arr__cursor" id="arr-cur" y1="' + T + '" y2="' + (H - B) + '"/>' +
     '<circle class="arr__dot" id="arr-dot" r="6"/><circle class="arr__dot arr__dot--b" id="arr-dotb" r="4"/>';
@@ -279,28 +275,7 @@ document.addEventListener('click', function (e) {
     document.getElementById('arr-credits').textContent = p.credits >= 1e6 ? (p.credits / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : Math.round(p.credits / 1000) + 'K';
     document.getElementById('arr-accounts-b').textContent = 'best case ' + p.best_accounts;
     document.getElementById('arr-arr-b').textContent = 'best case ' + money(p.best_arr);
-    document.getElementById('arr-tiers').innerHTML = tiers.map(function (t) {
-      return '<li><span class="arr__swatch arr__swatch--' + t.key + '"></span>' + t.name + ' <b class="mono">' + p.count_tier[t.key] +
-             '</b> <span class="mono t-muted">' + money(p.by_tier[t.key]) + '</span></li>';
-    }).join('');
   }
   range.addEventListener('input', show);
   show();
-})();
-
-// Forecast settings: reload with the new values once the person stops typing.
-(function () {
-  var form = document.querySelector('.arr__set');
-  if (!form) return;
-  var timer;
-  form.querySelectorAll('select').forEach(function (el) { el.addEventListener('change', function () { form.submit(); }); });
-  var num = form.querySelector('input[name="conv"]');
-  if (!num) return;
-  function send() {
-    var v = parseInt(num.value, 10);
-    if (isNaN(v) || v < 1 || v > 100) return;
-    form.submit();
-  }
-  num.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(send, 900); });
-  num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); send(); } });
 })();

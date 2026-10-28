@@ -23,6 +23,7 @@ ENTERPRISE_SIGNALS = re.compile(r'dedicated instance|private cloud|soc ?2|sharep
                                 r'security (review|note|doc|brief|slide)|client-cloud', re.I)
 GROWTH_SIGNALS = re.compile(r'salesforce|\bcrm\b|hubspot', re.I)
 MONTHS = 18
+NEW_CONVERSATIONS_PER_MONTH = 6   # how many cold accounts the team can start working each month
 COLD_CYCLE_DAYS = sum(STAGE_DAYS.values())          # the date formula's span for a cold account (135 days)
 FIRST_CALL_SCORE = sum(STAGE_WEIGHTS[n] for n in (1, 2, 3))   # score of an account that has just had its first call
 DEFAULT_CYCLE_MONTHS = 3        # typical cold account; 6 when being conservative
@@ -120,13 +121,20 @@ def build(accounts, today=None, cycle_months=DEFAULT_CYCLE_MONTHS, conversion=DE
       terms, and replaced by a deal value of $36K or more when one is set. Nothing is forecast below Starter.
     - Timing: the date formula gives the time left from the score. The graph stretches it so a cold account
       takes `cycle_months`, then by team size (small x1.6, mid x1.25, large x1.0), by connection (no advisor
-      x1.5), and Enterprise adds a security review.
+      x1.5), and Enterprise adds a security review. Cold accounts start in a queue, about 6 a month.
     - Likelihood: close_probability(). Expected signings are whole accounts: the summed likelihood of every
       account due by a date, rounded; the accounts counted are the most likely ones, and their contract values
       make the ARR. The set only grows month to month, so ARR never goes down.
     """
     today = today or datetime.date.today()
     factor = cycle_months * 30.4 / COLD_CYCLE_DAYS
+    # Cold accounts are worked in order, so the least ready ones start last: higher score first, then an
+    # advisor connection, then a bigger team.
+    cold = sorted((a for a in accounts if not a.contract_info['done'] and a.score < FIRST_CALL_SCORE),
+                  key=lambda a: (-a.score, 0 if advisor_names(getattr(a, 'advisors', '')) else 1,
+                                 ('large', 'mid', 'unknown', 'small').index(team_band(getattr(a, 'sales_marketing_team', None))),
+                                 a.name))
+    start_days = {a.name: (i // NEW_CONVERSATIONS_PER_MONTH) * 30.4 for i, a in enumerate(cold)}
     deals = []
     for a in accounts:
         info = a.contract_info
@@ -141,7 +149,7 @@ def build(accounts, today=None, cycle_months=DEFAULT_CYCLE_MONTHS, conversion=DE
             days *= TEAM_DELAY[team_band(team)] * (1.0 if advisors else NO_CONNECTION_DELAY)
             if tier['key'] == 'enterprise':
                 days += SECURITY_REVIEW_DAYS
-            due = today + datetime.timedelta(days=round(days))
+            due = today + datetime.timedelta(days=round(days + start_days.get(a.name, 0)))
             reasons.append('advisor ' + ', '.join(advisors) if advisors else 'no advisor connection')
             reasons.append('score %d%%' % a.score)
         deals.append({'name': a.name, 'pk': getattr(a, 'pk', None), 'date': due, 'tier': tier, 'arr': arr,

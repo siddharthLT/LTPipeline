@@ -333,6 +333,16 @@ class ForecastTests(TestCase):
         self.assertEqual(done['signed'], ['Live'])
         self.assertEqual(done['points'][0]['arr'], 45000)
 
+    def test_cold_accounts_queue_least_ready_last(self):
+        import datetime
+        from .forecast import build
+        today = datetime.date(2026, 10, 27)
+        accts = [self._acct('C%02d' % i, 0, '', 135, team=5) for i in range(13)]
+        accts.append(self._acct('Advised', 0, '', 135, team=5, advisors='PK'))
+        by = {e['name']: e['date'] for e in build(accts, today)['entries']}
+        self.assertEqual(by['Advised'], min(by.values()))                 # the advised account starts first
+        self.assertGreater(max(by.values()), min(by.values()) + datetime.timedelta(days=30))   # the rest are spread out
+
     def test_dashboard_shows_forecast(self):
         from django.contrib.auth import get_user_model
         user = get_user_model().objects.create_user(email='f@x.io', password='pw-123456')

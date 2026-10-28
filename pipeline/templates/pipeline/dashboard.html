@@ -23,20 +23,8 @@
       <span class="eyebrow">Forecast</span>
       <h2 class="t-h2">ARR over the next 18 months</h2>
     </div>
-    <p class="t-meta arr__note">Each account is predicted to sign at Starter, Growth or Enterprise, and when. Expected = whole accounts: the most likely ones among those due by that date. An account that has just had its first call has the chance set here, rising to 100% at contract. Best case counts every account due. Your scores are not changed.</p>
+    <p class="t-meta arr__note">Each account is predicted to sign at a tier and on a date. Expected = whole accounts: the most likely ones among those due by that date. An account that has just had its first call has a 20% chance, rising to 100% at contract. Best case counts every account due. Your scores are not changed.</p>
   </div>
-  <form class="arr__set" method="get" action="{% url 'pipeline:dashboard' %}#arr" aria-label="Forecast assumptions">
-    <label>Sales cycle for a cold account
-      <select name="cycle" class="field__input field__input--plain field__select">
-        <option value="3"{% if forecast.cycle_months == 3 %} selected{% endif %}>3 months (typical)</option>
-        <option value="6"{% if forecast.cycle_months == 6 %} selected{% endif %}>6 months (conservative)</option>
-        {% if forecast.cycle_months != 3 and forecast.cycle_months != 6 %}<option value="{{ forecast.cycle_months }}" selected>{{ forecast.cycle_months }} months</option>{% endif %}
-      </select>
-    </label>
-    <label>Chance to sign after a first call
-      <span class="arr__pct"><input type="text" name="conv" value="{{ forecast.conversion }}" class="field__input field__input--plain" inputmode="numeric" pattern="[0-9]*" maxlength="3" size="3"><span class="arr__unit" aria-hidden="true">%</span></span>
-    </label>
-  </form>
   <div class="arr__body">
     <div class="arr__chart"><svg id="arr-svg" viewBox="0 0 640 280" role="img" aria-label="Expected ARR by month" preserveAspectRatio="xMidYMid meet"></svg></div>
     <dl class="arr__stats">
@@ -45,7 +33,6 @@
       <div class="arr__stat"><dt>Credits included a year</dt><dd class="mono" id="arr-credits">0</dd></div>
     </dl>
   </div>
-  <ul class="arr__tiers" id="arr-tiers" aria-label="Expected ARR by tier"></ul>
   <div class="arr__slide">
     <label for="arr-range"><span class="arr__when mono" id="arr-when"></span></label>
     <input type="range" id="arr-range" min="0" max="18" step="1" value="18" aria-label="Months from today">
@@ -53,7 +40,7 @@
   </div>
   <p class="t-meta arr__names"><strong>Already signed:</strong> <span id="arr-signed"></span></p>
   <p class="t-meta arr__names"><strong>Expected to sign:</strong> <span id="arr-names"></span></p>
-  <p class="t-meta arr__foot">Tier and ARR (unlimited seats a year): Starter $36K, Growth $48K, Enterprise $72K. Signed accounts use their contract. Others come from sales and marketing team size (under 20 Starter, 20&ndash;99 Growth, 100+ Enterprise), move up when they asked for CRM sync or security and hosting terms, and use the deal value when it is $36K or more. Nothing is forecast below $36K. Timing stretches the time left by team size (small x1.6, mid x1.25), by no advisor connection (x1.5; advisors are Abhishek, Lavanya, Mak, PK and Naren), and adds 45 days of security review for Enterprise.</p>
+  <p class="t-meta arr__foot">Tier and ARR (unlimited seats a year): Starter $36K, Growth $48K, Enterprise $72K. Signed accounts use their contract. Others come from sales and marketing team size (under 20 Starter, 20&ndash;99 Growth, 100+ Enterprise), move up when they asked for CRM sync or security and hosting terms, and use the deal value when it is $36K or more. Nothing is forecast below $36K. Timing: the team opens about 6 new conversations a month, in order of score, advisor connection and team size, so the least ready accounts come last. The time left is then stretched by team size (small x1.6, mid x1.25), by no advisor connection (x1.5; advisors are Abhishek, Lavanya, Mak, PK and Naren), and adds 45 days of security review for Enterprise.</p>
   <details class="arr__entries">
     <summary>Predicted entries by account ({{ forecast.entries|length }})</summary>
     <div class="table-scroll">
