@@ -263,14 +263,14 @@ def health_check(request):
             cells.append(filled)
         done = sum(cells)
         rows.append({'account': a, 'cells': cells, 'filled': done, 'percent': round(done / len(cells) * 100)})
-    sort = request.GET.get('sort', 'least')
+    sort = request.GET.get('sort', 'most')
     if sort == 'name':
         rows.sort(key=lambda r: r['account'].name.lower())
-    elif sort == 'most':
-        rows.sort(key=lambda r: (-r['percent'], r['account'].name.lower()))
-    else:
-        sort = 'least'
+    elif sort == 'least':
         rows.sort(key=lambda r: (r['percent'], r['account'].name.lower()))
+    else:
+        sort = 'most'
+        rows.sort(key=lambda r: (-r['percent'], r['account'].name.lower()))
     n = len(rows) or 1
     footer = [round(totals[attr] / n * 100) for attr, _ in columns]
     return render(request, 'pipeline/health_check.html', {

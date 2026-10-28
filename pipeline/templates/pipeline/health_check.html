@@ -7,8 +7,8 @@
   <h1 class="t-h1">How much of each account is filled in</h1>
   <p class="t-meta">{{ account_count }} accounts by {{ field_count }} fields. <span class="dot dot--ok" aria-hidden="true"></span> filled, <span class="dot dot--no" aria-hidden="true"></span> empty. Overall {{ overall }}% filled.</p>
   <p class="t-meta health__sort">Sort:
-    <a href="?sort=least" {% if sort == 'least' %}aria-current="true"{% endif %}>Least filled</a>
     <a href="?sort=most" {% if sort == 'most' %}aria-current="true"{% endif %}>Most filled</a>
+    <a href="?sort=least" {% if sort == 'least' %}aria-current="true"{% endif %}>Least filled</a>
     <a href="?sort=name" {% if sort == 'name' %}aria-current="true"{% endif %}>Name</a>
   </p>
 </header>
