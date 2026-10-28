@@ -27,14 +27,14 @@
   </div>
   <form class="arr__set" method="get" action="{% url 'pipeline:dashboard' %}#arr" aria-label="Forecast assumptions">
     <label>Sales cycle for a cold account
-      <select name="cycle" class="field__input field__input--plain field__select" onchange="this.form.submit()">
+      <select name="cycle" class="field__input field__input--plain field__select">
         <option value="3"{% if forecast.cycle_months == 3 %} selected{% endif %}>3 months (typical)</option>
         <option value="6"{% if forecast.cycle_months == 6 %} selected{% endif %}>6 months (conservative)</option>
         {% if forecast.cycle_months != 3 and forecast.cycle_months != 6 %}<option value="{{ forecast.cycle_months }}" selected>{{ forecast.cycle_months }} months</option>{% endif %}
       </select>
     </label>
     <label>Chance to sign after a first call
-      <span class="arr__pct"><input type="number" name="conv" min="1" max="100" value="{{ forecast.conversion }}" class="field__input field__input--plain" onchange="this.form.submit()">%</span>
+      <span class="arr__pct"><input type="number" name="conv" min="1" max="100" value="{{ forecast.conversion }}" class="field__input field__input--plain" inputmode="numeric"><span class="arr__unit" aria-hidden="true">%</span></span>
     </label>
   </form>
   <div class="arr__body">

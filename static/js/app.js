@@ -278,3 +278,20 @@ document.addEventListener('click', function (e) {
   range.addEventListener('input', show);
   show();
 })();
+
+// Forecast settings: reload with the new values once the person stops typing.
+(function () {
+  var form = document.querySelector('.arr__set');
+  if (!form) return;
+  var timer;
+  form.querySelectorAll('select').forEach(function (el) { el.addEventListener('change', function () { form.submit(); }); });
+  var num = form.querySelector('input[name="conv"]');
+  if (!num) return;
+  function send() {
+    var v = parseInt(num.value, 10);
+    if (isNaN(v) || v < 1 || v > 100) return;
+    form.submit();
+  }
+  num.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(send, 900); });
+  num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); send(); } });
+})();

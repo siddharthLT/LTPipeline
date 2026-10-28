@@ -512,3 +512,5 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .arr__set select { min-width: 200px; }
 .arr__pct { display: flex; align-items: center; gap: 6px; }
 .arr__pct input { width: 80px; }
+.arr__set .arr__pct input { width: 84px; flex: 0 0 84px; }
+.arr__unit { font-size: var(--fs-sm); color: var(--ink-2); }
