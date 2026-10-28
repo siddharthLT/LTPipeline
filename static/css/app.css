@@ -557,3 +557,11 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .gantt__conn:focus-visible { outline: 2px solid var(--teal-deep); outline-offset: 2px; }
 .gantt__tip { display: none; position: absolute; bottom: 120%; right: -8px; white-space: nowrap; padding: 4px 8px; border-radius: 6px; background: var(--ink); color: #fff; font-size: 11px; line-height: 1.3; z-index: 5; }
 .gantt__conn:hover .gantt__tip, .gantt__conn:focus .gantt__tip { display: block; }
+
+/* Product usage */
+.usage__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-4); }
+.usage__stat { display: flex; flex-direction: column; gap: 4px; padding: var(--s-4); }
+.usage__stat strong { font-size: 24px; font-weight: 600; color: var(--ink); }
+.usage__tabs { margin-bottom: var(--s-3); }
+.usage__scroll { overflow-x: auto; }
+.usage__day { margin: var(--s-4) 0 var(--s-2); }

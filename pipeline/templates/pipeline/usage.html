@@ -1,0 +1,76 @@
+{% extends "app.html" %}
+{% block title %}Product usage · Lunartree{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Product usage</span>
+  <h1 class="t-h1">Who is using BioLens</h1>
+  <p class="t-meta">Live from PostHog, joined to tracker accounts by email domain (the domain on each account). Internal @lunartree.bio users are left out.</p>
+  <p class="t-meta health__sort">Window:
+    {% for w in windows %}<a href="?days={{ w }}&tab={{ tab }}" {% if w == days %}aria-current="true"{% endif %}>{{ w }} days</a>{% endfor %}
+    <a href="?days={{ days }}&tab={{ tab }}&refresh=1">Refresh</a>
+  </p>
+</header>
+
+{% if error %}
+<section class="card"><p class="t-body"><strong>Could not load usage.</strong> {{ error }}</p></section>
+{% else %}
+<section class="usage__stats">
+  <div class="card usage__stat"><span class="t-meta">Tracker accounts using it</span><strong>{{ with_usage }} of {{ tracked }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Users matched to an account</span><strong>{{ totals.matched_users }} of {{ totals.users }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Tracked events</span><strong>{{ totals.evts }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Actions taken</span><strong>{{ totals.acts }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">AI chats</span><strong>{{ totals.ai }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Rage clicks</span><strong>{{ totals.rage }}</strong></div>
+</section>
+
+<p class="t-meta health__sort usage__tabs">
+  <a href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-current="true"{% endif %}>Accounts</a>
+  <a href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-current="true"{% endif %}>Users</a>
+  <a href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-current="true"{% endif %}>Daily activity</a>
+  <a href="?days={{ days }}&tab=unmatched" {% if tab == 'unmatched' %}aria-current="true"{% endif %}>Not in tracker ({{ unmatched|length }})</a>
+</p>
+
+<section class="card usage__card">
+{% if tab == 'users' %}
+  <div class="usage__scroll"><table class="rules-table">
+    <thead><tr><th>User</th><th>Account</th><th>Tier</th><th>Sessions</th><th>Features</th><th>Pages</th><th>Actions</th><th>AI</th><th>Rage</th><th>Last seen</th></tr></thead>
+    <tbody>{% for u in users %}<tr>
+      <td>{{ u.name|default:u.email }}<br><span class="t-meta mono">{{ u.email }}</span></td>
+      <td><a href="{% url 'pipeline:account_detail' u.account.pk %}">{{ u.account.name }}</a></td>
+      <td>{{ u.tier }}</td><td>{{ u.sessions }}</td><td>{{ u.feats }}</td><td>{{ u.pvs }}</td><td>{{ u.acts }}</td><td>{{ u.ai }}</td><td>{{ u.rage }}</td><td>{{ u.last_seen|slice:":10" }}</td>
+    </tr>{% empty %}<tr><td colspan="10">No matched users in this window.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="t-meta">Tier: Power is 3+ actions and 4+ features. Active took an action or used it heavily. Browser only browsed. Low is minimal.</p>
+
+{% elif tab == 'daily' %}
+  {% for day, items in days_list %}
+  <h3 class="t-h3 usage__day">{{ day }} <span class="t-meta">{{ items|length }} user{{ items|length|pluralize }}</span></h3>
+  <div class="usage__scroll"><table class="rules-table">
+    <thead><tr><th>User</th><th>Account</th><th>Pages</th>{% for a in actions %}<th>{{ a }}</th>{% endfor %}<th>Total</th></tr></thead>
+    <tbody>{% for d in items %}{% if d.account %}<tr>
+      <td class="mono">{{ d.email }}</td><td><a href="{% url 'pipeline:account_detail' d.account.pk %}">{{ d.account.name }}</a></td><td>{{ d.pvs }}</td>
+      {% for c in d.counts %}<td>{% if c %}<strong>{{ c }}</strong>{% else %}&mdash;{% endif %}</td>{% endfor %}<td><strong>{{ d.total }}</strong></td>
+    </tr>{% endif %}{% endfor %}</tbody>
+  </table></div>
+  {% empty %}<p class="t-body">No activity in this window.</p>{% endfor %}
+
+{% elif tab == 'unmatched' %}
+  <p class="t-meta">People using BioLens whose email domain does not match any tracker account. To connect one, set the same domain on the account (edit Company on its page), or add the domain to ALIASES in <span class="mono">pipeline/posthog.py</span>.</p>
+  <div class="usage__scroll"><table class="rules-table">
+    <thead><tr><th>Email domain</th><th>Users</th><th>Events</th><th>Actions</th><th>Who</th></tr></thead>
+    <tbody>{% for o in unmatched %}<tr><td class="mono">{{ o.domain }}</td><td>{{ o.users }}</td><td>{{ o.evts }}</td><td>{{ o.acts }}</td><td class="t-meta">{{ o.emails|join:", " }}</td></tr>
+    {% empty %}<tr><td colspan="5">Everyone is matched.</td></tr>{% endfor %}</tbody>
+  </table></div>
+
+{% else %}
+  <div class="usage__scroll"><table class="rules-table">
+    <thead><tr><th>Account</th><th>Users</th><th>Sessions</th><th>Events</th><th>Actions</th><th>AI</th><th>Rage</th><th>Features</th><th>Last seen</th></tr></thead>
+    <tbody>{% for m in rows %}<tr>
+      <td><a href="{% url 'pipeline:account_detail' m.account.pk %}">{{ m.account.name }}</a><br><span class="t-meta">Step {{ m.account.furthest_stage }}</span></td>
+      <td>{{ m.users|length }}</td><td>{{ m.sessions }}</td><td>{{ m.evts }}</td><td>{{ m.acts }}</td><td>{{ m.ai }}</td><td>{{ m.rage }}</td><td>{{ m.feats }}</td><td>{{ m.last_seen|slice:":10" }}</td>
+    </tr>{% empty %}<tr><td colspan="9">No tracker account has usage in this window.</td></tr>{% endfor %}</tbody>
+  </table></div>
+{% endif %}
+</section>
+{% endif %}
+{% endblock %}

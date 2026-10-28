@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('search.json', views.search_index, name='search'),
     path('rules/', views.rules, name='rules'),
+    path('usage/', views.usage, name='usage'),
     path('health-check/', views.health_check, name='health_check'),
     path('playbook/', views.playbook, name='playbook'),
     path('playbook/<int:pk>/edit/', views.edit_usage_stage, name='edit_usage_stage'),

@@ -291,3 +291,32 @@ def health_check(request):
         'overall': round(sum(r['filled'] for r in rows) / (n * len(columns)) * 100),
         'field_count': len(columns), 'account_count': len(rows), 'nav': 'health',
     })
+
+
+@login_required
+def usage(request):
+    from . import posthog
+    try:
+        days = int(request.GET.get('days', 30))
+    except ValueError:
+        days = 30
+    days = days if days in (7, 14, 30, 90) else 30
+    tab = request.GET.get('tab', 'accounts')
+    if request.GET.get('refresh'):
+        from django.core.cache import cache
+        cache.delete('posthog-usage-%d' % days)
+    ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': [l for _, l in posthog.ACTIONS],
+           'windows': (7, 14, 30, 90)}
+    try:
+        rows, unmatched, daily, totals = posthog.join(list(Account.objects.all()), days)
+        by_day = {}
+        for d in daily:
+            by_day.setdefault(d['day'], []).append(d)
+        ctx.update(rows=rows, unmatched=unmatched, days_list=sorted(by_day.items(), reverse=True), totals=totals,
+                   users=[dict(u, account=m['account']) for m in rows for u in m['users']],
+                   tracked=Account.objects.count(), with_usage=len(rows))
+    except posthog.NotConfigured as e:
+        ctx['error'] = str(e)
+    except Exception as e:  # network or PostHog errors should not break the page
+        ctx['error'] = 'PostHog did not answer: %s' % e
+    return render(request, 'pipeline/usage.html', ctx)
