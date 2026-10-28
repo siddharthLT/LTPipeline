@@ -525,7 +525,7 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .health__sort a { margin-right: var(--s-3); color: var(--teal-deep); }
 .health__sort a[aria-current] { font-weight: 600; text-decoration: underline; }
 .health { padding: 0; overflow: hidden; }
-.health__scroll { overflow: auto; max-height: calc(100vh - 220px); }
+.health__scroll { overflow: auto; overscroll-behavior: contain; height: calc(100vh - 270px); height: calc(100dvh - 270px); min-height: 360px; }
 .health__table { border-collapse: separate; border-spacing: 0; font-size: var(--fs-meta); }
 .health__table th, .health__table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; background: var(--canvas); }
 .health__table thead th { position: sticky; top: 0; z-index: 2; font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
