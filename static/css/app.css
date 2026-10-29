@@ -565,3 +565,24 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .usage__tabs { margin-bottom: var(--s-3); }
 .usage__scroll { overflow-x: auto; }
 .usage__day { margin: var(--s-4) 0 var(--s-2); }
+
+/* Product usage layout: use the full width, keep numbers aligned, nothing clipped */
+.page.page--usage { max-width: none; }
+.usage__stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .usage__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .usage__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.usage__stat { padding: var(--s-3) var(--s-4); }
+.usage__stat strong { font-size: 20px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.usage__card { padding: var(--s-3) var(--s-4); }
+.usage__card .rules-table { min-width: 0; }
+.usage__card .rules-table td, .usage__card .rules-table th { padding: 8px 10px; }
+.usage__card .num { text-align: right; font-variant-numeric: tabular-nums; }
+.usage__card .nowrap { white-space: nowrap; }
+.usage__card tbody tr:hover td { background: var(--teal-50); }
+.usage__card .clip { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usage__dayrow th { background: var(--teal-50); color: var(--ink); text-transform: none; letter-spacing: 0; font-size: var(--fs-sm); padding: 6px 10px; }
+.usage__daily thead th { position: sticky; top: 0; background: var(--paper, #fff); z-index: 1; }
+.usage__scroll { max-height: calc(100vh - 360px); overflow: auto; }
+.tier { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; background: var(--line); color: var(--ink-2); }
+.tier--power { background: var(--teal-50); color: var(--teal-deep); font-weight: 600; }
+.tier--active { background: var(--teal-50); color: var(--teal-deep); }

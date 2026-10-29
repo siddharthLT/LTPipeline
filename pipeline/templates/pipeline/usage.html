@@ -1,5 +1,6 @@
 {% extends "app.html" %}
 {% block title %}Product usage · Lunartree{% endblock %}
+{% block page_class %}page--usage{% endblock %}
 {% block content %}
 <header class="thesis-head">
   <span class="eyebrow">Product usage</span>
@@ -33,41 +34,43 @@
 <section class="card usage__card">
 {% if tab == 'users' %}
   <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>User</th><th>Account</th><th>Tier</th><th>Sessions</th><th>Features</th><th>Pages</th><th>Actions</th><th>AI</th><th>Rage</th><th>Last seen</th></tr></thead>
+    <thead><tr><th>User</th><th>Account</th><th>Tier</th><th class="num">Sessions</th><th class="num">Features</th><th class="num">Pages</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th>Last seen</th></tr></thead>
     <tbody>{% for u in users %}<tr>
       <td>{{ u.name|default:u.email }}<br><span class="t-meta mono">{{ u.email }}</span></td>
       <td><a href="{% url 'pipeline:account_detail' u.account.pk %}">{{ u.account.name }}</a></td>
-      <td>{{ u.tier }}</td><td>{{ u.sessions }}</td><td>{{ u.feats }}</td><td>{{ u.pvs }}</td><td>{{ u.acts }}</td><td>{{ u.ai }}</td><td>{{ u.rage }}</td><td>{{ u.last_seen|slice:":10" }}</td>
+      <td><span class="tier tier--{{ u.tier|lower }}">{{ u.tier }}</span></td><td class="num">{{ u.sessions }}</td><td class="num">{{ u.feats }}</td><td class="num">{{ u.pvs }}</td><td class="num">{{ u.acts }}</td><td class="num">{{ u.ai }}</td><td class="num">{{ u.rage }}</td><td class="nowrap">{{ u.last_seen|slice:":10" }}</td>
     </tr>{% empty %}<tr><td colspan="10">No matched users in this window.</td></tr>{% endfor %}</tbody>
   </table></div>
   <p class="t-meta">Tier: Power is 3+ actions and 4+ features. Active took an action or used it heavily. Browser only browsed. Low is minimal.</p>
 
 {% elif tab == 'daily' %}
-  {% for day, items in days_list %}
-  <h3 class="t-h3 usage__day">{{ day }} <span class="t-meta">{{ items|length }} user{{ items|length|pluralize }}</span></h3>
-  <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>User</th><th>Account</th><th>Pages</th>{% for a in actions %}<th>{{ a }}</th>{% endfor %}<th>Total</th></tr></thead>
-    <tbody>{% for d in items %}{% if d.account %}<tr>
-      <td class="mono">{{ d.email }}</td><td><a href="{% url 'pipeline:account_detail' d.account.pk %}">{{ d.account.name }}</a></td><td>{{ d.pvs }}</td>
-      {% for c in d.counts %}<td>{% if c %}<strong>{{ c }}</strong>{% else %}&mdash;{% endif %}</td>{% endfor %}<td><strong>{{ d.total }}</strong></td>
-    </tr>{% endif %}{% endfor %}</tbody>
+  <div class="usage__scroll"><table class="rules-table usage__daily">
+    <thead><tr><th>User</th><th>Account</th><th class="num">Pages</th>{% for a in actions %}<th class="num"><span title="{{ a.1 }}">{{ a.0 }}</span></th>{% endfor %}<th class="num">Total</th></tr></thead>
+    {% for day, items in days_list %}
+    <tbody>
+      <tr class="usage__dayrow"><th colspan="{{ actions|length|add:4 }}">{{ day }} <span class="t-meta">&middot; {{ items|length }} user{{ items|length|pluralize }}</span></th></tr>
+      {% for d in items %}{% if d.account %}<tr>
+        <td class="mono clip" title="{{ d.email }}">{{ d.email }}</td><td><a href="{% url 'pipeline:account_detail' d.account.pk %}">{{ d.account.name }}</a></td><td class="num">{{ d.pvs }}</td>
+        {% for c in d.counts %}<td class="num">{% if c %}<strong>{{ c }}</strong>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>{% endfor %}<td class="num"><strong>{{ d.total }}</strong></td>
+      </tr>{% endif %}{% endfor %}
+    </tbody>
+    {% empty %}<tbody><tr><td colspan="12">No activity in this window.</td></tr></tbody>{% endfor %}
   </table></div>
-  {% empty %}<p class="t-body">No activity in this window.</p>{% endfor %}
 
 {% elif tab == 'unmatched' %}
   <p class="t-meta">People using BioLens whose email domain does not match any tracker account. To connect one, set the same domain on the account (edit Company on its page), or add the domain to ALIASES in <span class="mono">pipeline/posthog.py</span>.</p>
   <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>Email domain</th><th>Users</th><th>Events</th><th>Actions</th><th>Who</th></tr></thead>
-    <tbody>{% for o in unmatched %}<tr><td class="mono">{{ o.domain }}</td><td>{{ o.users }}</td><td>{{ o.evts }}</td><td>{{ o.acts }}</td><td class="t-meta">{{ o.emails|join:", " }}</td></tr>
+    <thead><tr><th>Email domain</th><th class="num">Users</th><th class="num">Events</th><th class="num">Actions</th><th>Who</th></tr></thead>
+    <tbody>{% for o in unmatched %}<tr><td class="mono">{{ o.domain }}</td><td class="num">{{ o.users }}</td><td class="num">{{ o.evts }}</td><td class="num">{{ o.acts }}</td><td class="t-meta">{{ o.emails|join:", " }}</td></tr>
     {% empty %}<tr><td colspan="5">Everyone is matched.</td></tr>{% endfor %}</tbody>
   </table></div>
 
 {% else %}
   <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>Account</th><th>Users</th><th>Sessions</th><th>Events</th><th>Actions</th><th>AI</th><th>Rage</th><th>Features</th><th>Last seen</th></tr></thead>
+    <thead><tr><th>Account</th><th class="num">Users</th><th class="num">Sessions</th><th class="num">Events</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th class="num">Features</th><th>Last seen</th></tr></thead>
     <tbody>{% for m in rows %}<tr>
       <td><a href="{% url 'pipeline:account_detail' m.account.pk %}">{{ m.account.name }}</a><br><span class="t-meta">Step {{ m.account.furthest_stage }}</span></td>
-      <td>{{ m.users|length }}</td><td>{{ m.sessions }}</td><td>{{ m.evts }}</td><td>{{ m.acts }}</td><td>{{ m.ai }}</td><td>{{ m.rage }}</td><td>{{ m.feats }}</td><td>{{ m.last_seen|slice:":10" }}</td>
+      <td class="num">{{ m.users|length }}</td><td class="num">{{ m.sessions }}</td><td class="num">{{ m.evts }}</td><td class="num">{{ m.acts }}</td><td class="num">{{ m.ai }}</td><td class="num">{{ m.rage }}</td><td class="num">{{ m.feats }}</td><td class="nowrap">{{ m.last_seen|slice:":10" }}</td>
     </tr>{% empty %}<tr><td colspan="9">No tracker account has usage in this window.</td></tr>{% endfor %}</tbody>
   </table></div>
 {% endif %}

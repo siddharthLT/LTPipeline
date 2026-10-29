@@ -16,6 +16,7 @@ ACTIONS = [
     ('workspace_companies:company_added', 'Added to workspace'),
     ('workspace:created', 'Workspaces created'),
 ]
+SHORT = ['Emails', 'DM DL', 'DM +', 'Status', 'Score', 'Lead', 'Add WS', 'WS new']
 ALL_EVENTS = [e for e, _ in ACTIONS] + [
     'outreach:email_abandoned', 'decision_makers:removed', 'workspace_companies:filter_applied',
     'chat:user_message_submit', 'chat:download_report_click',

@@ -81,7 +81,7 @@ def search_index(request):
     """Accounts for the Cmd/Ctrl+K palette."""
     accounts = Account.objects.prefetch_related('stage_progress')
     rows = [{
-        'name': a.name, 'domain': a.domain, 'segment': a.get_segment_display() if a.segment else '',
+        'name': a.name, 'domain': a.domain, 'advisors': a.advisors, 'segment': a.get_segment_display() if a.segment else '',
         'score': a.score, 'stage': a.furthest_stage_name,
         'url': reverse('pipeline:account_detail', args=[a.pk]),
     } for a in accounts]
@@ -305,7 +305,7 @@ def usage(request):
     if request.GET.get('refresh'):
         from django.core.cache import cache
         cache.delete('posthog-usage-%d' % days)
-    ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': [l for _, l in posthog.ACTIONS],
+    ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': list(zip(posthog.SHORT, [l for _, l in posthog.ACTIONS])),
            'windows': (7, 14, 30, 90)}
     try:
         rows, unmatched, daily, totals = posthog.join(list(Account.objects.all()), days)
