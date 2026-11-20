@@ -96,6 +96,7 @@ tbody tr:hover .gantt__score-cell { background: #FAFBFB; }
 @media (min-width: 900px) { .page.page--thesis { max-width: 980px; } }
 .back { margin: 0 0 var(--s-4) calc(var(--s-2) * -1); padding: 0 var(--s-2); text-decoration: none; }
 .thesis-head { display: grid; gap: var(--s-3); margin-bottom: var(--s-6); }
+.thesis-head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .sec { margin-top: var(--s-4); scroll-margin-top: var(--s-6); }
 .sec__head { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5); border-bottom: 1px solid var(--line); min-height: 56px; }
 .sec__head h2 { flex: 1; min-width: 0; }

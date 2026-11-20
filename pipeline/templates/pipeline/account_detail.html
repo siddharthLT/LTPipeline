@@ -18,6 +18,10 @@
     <span class="tag tag--outline mono">{{ account.domain }}</span>
     {% with od=account.overdue_actions|length %}{% if od %}<span class="tag tag--mark">{{ od }} action{{ od|pluralize }} overdue</span>{% endif %}{% endwith %}
   </div>
+  <div class="thesis-head__actions">
+    <a class="btn btn--sm" href="{% url 'pipeline:download_pdf' account.pk %}" download><svg class="ico ico-16" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5v10.25"/><path d="m7.75 10.75 4.25 4.25 4.25-4.25"/><path d="M5 19.25h14"/></svg> Download PDF</a>
+    <a class="btn btn--sm" href="{% url 'pipeline:download_json' account.pk %}" download><svg class="ico ico-16" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5v10.25"/><path d="m7.75 10.75 4.25 4.25 4.25-4.25"/><path d="M5 19.25h14"/></svg> Download JSON</a>
+  </div>
 </header>
 
 <div class="thesis-layout">

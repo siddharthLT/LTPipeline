@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import (SNAPSHOT_FORMS, AccountForm, ActionForm, CompanyForm, EmailForm, EventForm, IcpForm, MeetingForm, OverviewForm,
                     ProfileForm, StageEditForm, UsageStageForm, meeting_part_form)
 from .models import MEETING_PARTS, SEGMENTS, Account, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, UsageStage
+from . import exports
 from .forecast import build as build_forecast, advisor_names
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
@@ -112,6 +113,26 @@ def account_detail(request, pk):
         'circumference': 439.82,
         'score_dash': round(account.score / 100 * 439.82, 1),
     })
+
+
+def _export_queryset():
+    return Account.objects.prefetch_related('stage_progress', 'tasks', 'events', 'emails', 'meetings')
+
+
+@login_required
+def download_json(request, pk):
+    account = get_object_or_404(_export_queryset(), pk=pk)
+    response = HttpResponse(exports.json_bytes(account), content_type='application/json; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{exports.filename(account, "json")}"'
+    return response
+
+
+@login_required
+def download_pdf(request, pk):
+    account = get_object_or_404(_export_queryset(), pk=pk)
+    response = HttpResponse(exports.pdf_bytes(account), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{exports.filename(account, "pdf")}"'
+    return response
 
 
 def _form_response(request, form, title, saved_anchor, delete_url=None, submit_label='Save'):
