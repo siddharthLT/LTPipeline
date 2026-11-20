@@ -287,3 +287,7 @@ document.addEventListener('click', function (e) {
   range.addEventListener('input', show);
   show();
 })();
+
+document.addEventListener('click', function (e) {
+  document.querySelectorAll('details.pop[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
+});

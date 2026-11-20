@@ -2,46 +2,63 @@
 {% block title %}Actions · Lunartree{% endblock %}
 {% block page_class %}page--usage{% endblock %}
 {% block content %}
-<header class="thesis-head">
-  <span class="eyebrow">Actions</span>
-  <h1 class="t-h1">Everything that needs to happen</h1>
-  <p class="t-meta health__sort">Show:
-    <a href="?show=open{% if query %}&{{ query }}{% endif %}" {% if show == 'open' %}aria-current="true"{% endif %}>Open ({{ counts.open }})</a>
-    <a href="?show=done{% if query %}&{{ query }}{% endif %}" {% if show == 'done' %}aria-current="true"{% endif %}>Done ({{ counts.done }})</a>
-    <a href="?show=all{% if query %}&{{ query }}{% endif %}" {% if show == 'all' %}aria-current="true"{% endif %}>All ({{ counts.all }})</a>
-  </p>
+<header class="actions-head">
+  <div>
+    <span class="eyebrow">Actions</span>
+    <h1 class="t-h1">Everything that needs to happen</h1>
+  </div>
+  <nav class="seg" aria-label="Show actions">
+    <a class="seg__item" href="?show=open{% if query %}&{{ query }}{% endif %}" {% if show == 'open' %}aria-pressed="true"{% endif %}>Open <span class="seg__count">{{ counts.open }}</span></a>
+    <a class="seg__item" href="?show=done{% if query %}&{{ query }}{% endif %}" {% if show == 'done' %}aria-pressed="true"{% endif %}>Done <span class="seg__count">{{ counts.done }}</span></a>
+    <a class="seg__item" href="?show=all{% if query %}&{{ query }}{% endif %}" {% if show == 'all' %}aria-pressed="true"{% endif %}>All <span class="seg__count">{{ counts.all }}</span></a>
+  </nav>
 </header>
 
-<form method="get" class="card actfilter">
+<form method="get" class="actbar">
   <input type="hidden" name="show" value="{{ show }}">
-  <details class="actfilter__companies"{% if picked %} open{% endif %}>
-    <summary class="field-label">Companies{% if picked %} ({{ picked|length }} selected){% else %} (all){% endif %}</summary>
-    <div class="actfilter__list">
-      {% for a in accounts %}
-      <label class="check-row"><input type="checkbox" name="company" value="{{ a.pk }}"{% if a.pk in picked %} checked{% endif %}><span>{{ a.name }} <span class="t-meta mono">{{ a.score }}%</span></span></label>
-      {% endfor %}
-    </div>
-  </details>
-  <div class="actfilter__prob">
-    <span class="field-label">Probability</span>
-    <label class="t-meta">from <input type="number" name="min" min="0" max="100" value="{{ low }}" class="field__input field__input--plain actfilter__num">%</label>
-    <label class="t-meta">to <input type="number" name="max" min="0" max="100" value="{{ high }}" class="field__input field__input--plain actfilter__num">%</label>
+  <div class="actbar__group">
+    <span class="actbar__label">Company</span>
+    <details class="pop">
+      <summary class="chip"{% if picked %} aria-pressed="true"{% endif %}>{% if picked %}{{ picked|length }} selected{% else %}All companies{% endif %}
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg>
+      </summary>
+      <div class="pop__panel">
+        <div class="pop__list">
+          {% for a in accounts %}
+          <label class="pop__opt"><input type="checkbox" name="company" value="{{ a.pk }}"{% if a.pk in picked %} checked{% endif %}><span>{{ a.name }}</span><span class="pop__pct">{{ a.score }}%</span></label>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
   </div>
-  <div class="actfilter__btns">
-    <button type="submit" class="btn btn--primary btn--sm">Apply</button>
+  <span class="actbar__sep" aria-hidden="true"></span>
+  <div class="actbar__group">
+    <span class="actbar__label">Probability</span>
+    <input type="number" name="min" min="0" max="100" value="{{ low }}" class="actbar__num" aria-label="Minimum probability">
+    <span class="t-meta">to</span>
+    <input type="number" name="max" min="0" max="100" value="{{ high }}" class="actbar__num" aria-label="Maximum probability">
+    <span class="t-meta">%</span>
+  </div>
+  <div class="actbar__end">
     {% if filtered %}<a class="btn btn--quiet btn--sm" href="?show={{ show }}">Clear</a>{% endif %}
+    <button type="submit" class="btn btn--primary btn--sm">Apply</button>
   </div>
 </form>
 
 <div class="actcols">
-  <section class="card actcol">
-    <h2 class="actcol__t">Pipeline <span class="actionbar__n mono">{{ pipeline_tasks|length }}</span></h2>
-    {% include "pipeline/_action_list.html" with items=pipeline_tasks %}
+  <section class="card actcol" aria-label="Pipeline actions">
+    <header class="actcol__head">
+      <h2 class="actcol__t">Pipeline</h2><span class="actcol__n">{{ pipeline_tasks|length }}</span>
+      <span class="actcol__sub">Below 100%</span>
+    </header>
+    <div class="actcol__body">{% include "pipeline/_action_list.html" with items=pipeline_tasks %}</div>
   </section>
-  <section class="card actcol">
-    <h2 class="actcol__t">Active clients <span class="actionbar__n mono">{{ client_tasks|length }}</span></h2>
-    <p class="t-meta">Accounts that have reached 100% on the deal stages.</p>
-    {% include "pipeline/_action_list.html" with items=client_tasks %}
+  <section class="card actcol" aria-label="Active client actions">
+    <header class="actcol__head">
+      <h2 class="actcol__t">Active clients</h2><span class="actcol__n">{{ client_tasks|length }}</span>
+      <span class="actcol__sub">Reached 100%</span>
+    </header>
+    <div class="actcol__body">{% include "pipeline/_action_list.html" with items=client_tasks %}</div>
   </section>
 </div>
 {% endblock %}
