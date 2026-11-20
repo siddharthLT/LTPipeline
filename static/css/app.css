@@ -788,10 +788,13 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .recs__none { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) { .rec__thumb, .rec__play, .ucard { transition: none; } .rec__thumb:hover { transform: none; } }
 .recs__sort select { width: auto; min-width: 150px; min-height: var(--control-sm); }
-.rec__brand { position: absolute; left: 12px; max-width: 58%; top: 10px; font-size: 22px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; color: #fff; text-shadow: 0 1px 6px rgba(3, 95, 98, 0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec__brand { position: absolute; left: 12px; max-width: 58%; top: 10px; font-size: 22px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--brand, #fff); text-shadow: var(--brand-shadow, none); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feat__none { margin: var(--s-3) 0 0; }
 .usage__bar { min-width: 0; }
 .usage__bar .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .usage__bar .seg::-webkit-scrollbar { display: none; }
 .usage__bar .seg__item { white-space: nowrap; }
 @media (max-width: 640px) { .usage__bar .btn { margin-left: 0; } .feat li { grid-template-columns: minmax(96px, 130px) minmax(0, 1fr) 34px; } .top li { grid-template-columns: minmax(80px, 1fr) minmax(0, 1fr) 36px; } }
+/* company name: dark on the light tints, white on the deep ones */
+.rec__thumb--blip, .rec__thumb--short, .rec__thumb--mid { --brand: var(--ink); --brand-shadow: none; }
+.rec__thumb--long, .rec__thumb--deep { --brand: #fff; --brand-shadow: 0 1px 6px rgba(3, 95, 98, 0.45); }
