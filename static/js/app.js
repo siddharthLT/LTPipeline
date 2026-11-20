@@ -310,3 +310,47 @@ document.addEventListener('click', function (e) {
   if (form) ['input', 'change', 'click'].forEach(function (ev) { form.addEventListener(ev, update); });
   document.getElementById('hr-clear').addEventListener('click', function () { picks.forEach(function (c) { c.checked = false; }); update(); });
 })();
+
+// Pipeline table: fit a long company name in its column. Shrink the font first; if it still does not fit on
+// one line, wrap to two lines at a small size (three at worst), so the whole name always shows.
+(function () {
+  var names = document.querySelectorAll('.gantt__co');
+  if (!names.length) return;
+  var ONE_MIN = 11, TWO_START = 12, TWO_MIN = 9;
+  // scrollWidth is rounded, so a name 0.4px too wide still gets an ellipsis; measure the real text width
+  function tooWide(el) {
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    return r.getBoundingClientRect().width > el.getBoundingClientRect().width + 0.01;
+  }
+  function fit(el) {
+    el.style.fontSize = ''; el.classList.remove('gantt__co--wrap', 'gantt__co--wrap3');
+    if (!el.clientWidth) return;  // row hidden by a filter; refits when it is shown again
+    var size = parseFloat(getComputedStyle(el).fontSize);
+    while (tooWide(el) && size > ONE_MIN) { size -= 0.5; el.style.fontSize = size + 'px'; }
+    if (!tooWide(el)) return;
+    el.classList.add('gantt__co--wrap');
+    size = TWO_START; el.style.fontSize = size + 'px';
+    while (el.scrollHeight > el.clientHeight + 1 && size > TWO_MIN) { size -= 0.5; el.style.fontSize = size + 'px'; }
+    if (el.scrollHeight > el.clientHeight + 1) el.classList.add('gantt__co--wrap3');  // last resort: a third line, the row grows a little
+  }
+  function fitAll() { names.forEach(fit); }
+  if (window.ResizeObserver) {
+    var seen = new WeakMap();
+    var ro = new ResizeObserver(function (entries) {
+      entries.forEach(function (e) {
+        var w = Math.round(e.contentRect.width);
+        if (seen.get(e.target) !== w) { seen.set(e.target, w); fit(e.target); }
+      });
+    });
+    names.forEach(function (el) { ro.observe(el); });
+  } else {
+    window.addEventListener('resize', fitAll);
+  }
+  fitAll();
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(fitAll);
+    if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', fitAll);  // a weight loaded late changes text widths
+  }
+  window.addEventListener('load', fitAll);
+})();

@@ -260,15 +260,14 @@ def hand_raisers(request):
             r['state'] = 'done' if r['done'] else 'part' if r['met'] else 'gap' if r['num'] < furthest else 'open'
             r['current'] = furthest > 0 and r['num'] == furthest
         a.next_row = a.rows[furthest] if furthest < len(a.rows) else None
-        a.feed = sorted(a.events.all(), key=lambda e: (e.date, e.id), reverse=True)[:4]
+        a.feed = sorted(a.events.all(), key=lambda e: (e.date, e.id), reverse=True)[:6]
         last = a.feed[0] if a.feed else None
         a.last_touch = {'ago': _ago((today - last.date).days), 'date': last.date, 'kind': last.get_kind_display()} if last else None
         a.deck_actions = sorted(a.open_actions(), key=lambda t: (t.due_date is None, t.due_date or datetime.date.max, t.id))
         a.overdue = sum(1 for t in a.deck_actions if t.due_date and t.due_date < today)
         a.next_dated = next((t for t in a.deck_actions if t.due_date), None)
         a.blocker_list, a.must_list = _lines(a.blockers), _lines(a.must_happen)
-        a.buyer_line = (_lines(a.buyer) or [''])[0]
-        a.champion_line = (_lines(a.champion) or [''])[0]
+        a.icp_list = _lines(a.icp)
     return render(request, 'pipeline/hand_raisers.html', {'accounts': accounts, 'today': today, 'overview': overview})
 
 
