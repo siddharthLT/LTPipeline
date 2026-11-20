@@ -107,6 +107,7 @@
             <button type="button" class="gantt__toggle" data-toggle-row="row-{{ account.pk }}" aria-expanded="false" aria-controls="row-{{ account.pk }}" aria-label="Show summary for {{ account.name }}">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 5.75 15.75 12l-6.25 6.25"/></svg>
             </button>
+            <input type="checkbox" class="hr-pick" value="{{ account.pk }}" aria-label="Select {{ account.name }} for Hand Raisers view">
             <a class="gantt__link" href="{% url 'pipeline:account_detail' account.pk %}">
               <span class="gantt__co clamp-1">{{ account.name }}</span>
               <span class="gantt__dom mono clamp-1">{{ account.domain }}</span>
@@ -170,6 +171,11 @@
     <span class="legend t-meta">Open the arrow beside an account for its summary.</span>
   </div>
 </section>
+<div class="hr-bar" id="hr-bar" hidden role="region" aria-label="Hand Raisers view">
+  <span class="hr-bar__n mono" id="hr-count">0 selected</span>
+  <a class="btn btn--primary" id="hr-open" href="{% url 'pipeline:hand_raisers' %}" target="_blank" rel="noopener">Show me Hand Raisers View</a>
+  <button type="button" class="btn btn--quiet btn--sm" id="hr-clear">Clear</button>
+</div>
 {% else %}
 <div class="card empty empty--lg">
   <svg class="empty__art" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h8M8 12h12M4 17.5h10"/></svg>

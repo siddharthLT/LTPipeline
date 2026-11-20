@@ -291,3 +291,21 @@ document.addEventListener('click', function (e) {
 document.addEventListener('click', function (e) {
   document.querySelectorAll('details.pop[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
 });
+
+// Dashboard: pick accounts, then open the Hand Raisers view in a new tab.
+(function () {
+  var bar = document.getElementById('hr-bar');
+  if (!bar) return;
+  var picks = Array.from(document.querySelectorAll('.hr-pick')), open = document.getElementById('hr-open'),
+      count = document.getElementById('hr-count'), base = open.getAttribute('href');
+  function update() {
+    var ids = picks.filter(function (c) { return c.checked && !c.closest('tr').hidden; }).map(function (c) { return c.value; });
+    bar.hidden = ids.length === 0;
+    count.textContent = ids.length + ' selected';
+    open.href = base + '?ids=' + ids.join(',');
+  }
+  picks.forEach(function (c) { c.addEventListener('change', update); });
+  var form = document.getElementById('filters');
+  if (form) ['input', 'change', 'click'].forEach(function (ev) { form.addEventListener(ev, update); });
+  document.getElementById('hr-clear').addEventListener('click', function () { picks.forEach(function (c) { c.checked = false; }); update(); });
+})();

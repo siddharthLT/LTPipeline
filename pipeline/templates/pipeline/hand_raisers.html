@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Hand Raisers view · Lunartree{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/deck.css' %}">{% endblock %}
+{% block body %}
+{% if accounts %}
+<div class="deck" data-deck>
+  <header class="deck__bar">
+    <a class="deck__back" href="{% url 'pipeline:dashboard' %}">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg>
+      Pipeline
+    </a>
+    <span class="deck__title">Hand Raisers view</span>
+    <button type="button" class="deck__print" onclick="window.print()">Print or save as PDF</button>
+  </header>
+
+  <main class="deck__stage" data-stage>
+    <div class="deck__canvas" data-canvas>
+      {% for a in accounts %}
+      <section class="slide slide--thesis" data-slide aria-label="{{ a.name }}: buying thesis">
+        <div class="slide__head">
+          <div class="slide__id">
+            <span class="eyebrow">Hand raiser {{ forloop.counter }} of {{ accounts|length }}</span>
+            <h1 class="slide__name">{{ a.name }}</h1>
+            <p class="slide__dom mono">{{ a.domain }}{% if a.deal_value %} · {{ a.deal_value }}{% endif %}</p>
+          </div>
+          <span class="slide__chips">
+            <span class="slide__stat"><span class="slide__k">Latest stage</span><strong>{{ a.furthest_stage_name }}</strong><span class="mono">Step {{ a.furthest_stage }} of 12</span></span>
+            <span class="slide__stat slide__stat--prob">{% include "partials/donut.html" with pct=a.score arc=a.score_arc size=44 %}<span><span class="slide__k">Probability</span><strong class="mono">{{ a.score }}%</strong></span></span>
+          </span>
+        </div>
+
+        <div class="slide__main">
+          <article class="slide__blk"><h2>Pain now</h2><div class="hr-fit">{% if a.slide.pain_now %}{{ a.slide.pain_now }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+          <article class="slide__blk"><h2>Why they would buy</h2><div class="hr-fit">{% if a.slide.why_buy %}{{ a.slide.why_buy }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+          <article class="slide__blk"><h2>Who cares</h2><div class="hr-fit">{% if a.slide.who_cares %}{{ a.slide.who_cares }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+        </div>
+        <div class="slide__sub">
+          <article class="slide__blk slide__blk--soft"><h2>What they do</h2><div class="hr-fit">{% if a.slide.what_they_do %}{{ a.slide.what_they_do }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+          <article class="slide__blk slide__blk--soft"><h2>Who they service</h2><div class="hr-fit">{% if a.slide.who_they_service %}{{ a.slide.who_they_service }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+          <article class="slide__blk slide__blk--soft"><h2>Their ICP</h2><div class="hr-fit">{% if a.slide.icp %}{{ a.slide.icp }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+        </div>
+      </section>
+
+      <section class="slide slide--actions" data-slide aria-label="{{ a.name }}: actions">
+        <div class="slide__head">
+          <div class="slide__id">
+            <span class="eyebrow">{{ a.name }}</span>
+            <h1 class="slide__name">What needs to happen</h1>
+          </div>
+          <span class="slide__chips"><span class="slide__stat"><span class="slide__k">Open actions</span><strong class="mono">{{ a.deck_actions|length }}</strong></span></span>
+        </div>
+        <div class="slide__table hr-fit">
+          {% if a.deck_actions %}
+          <table>
+            <thead><tr><th>Action</th><th class="col-owner">Owner</th><th class="col-date">Date</th></tr></thead>
+            <tbody>
+              {% for t in a.deck_actions %}
+              <tr>
+                <td>{{ t.title }}</td>
+                <td class="col-owner">{{ t.owner|default:"Not set" }}</td>
+                <td class="col-date mono{% if t.due_date and t.due_date < today %} is-late{% endif %}">{% if t.due_date %}{{ t.due_date|date:"M j, Y" }}{% else %}No date{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}<p class="slide__none">No open actions.</p>{% endif %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+  </main>
+
+  <footer class="deck__nav">
+    <button type="button" class="deck__btn" data-prev aria-label="Previous slide">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg>
+    </button>
+    <span class="deck__count mono" data-count aria-live="polite"></span>
+    <button type="button" class="deck__btn" data-next aria-label="Next slide">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg>
+    </button>
+    <span class="deck__progress"><span data-progress></span></span>
+    <span class="deck__hint">Arrow keys to move</span>
+  </footer>
+</div>
+<script src="{% static 'js/deck.js' %}" defer></script>
+{% else %}
+<main class="deck-empty">
+  <span class="eyebrow">Hand Raisers view</span>
+  <h1 class="t-h1">No companies picked</h1>
+  <p class="t-body">Tick companies in the Pipeline table, then choose Show me Hand Raisers View.</p>
+  <a class="btn btn--primary" href="{% url 'pipeline:dashboard' %}">Back to Pipeline</a>
+</main>
+{% endif %}
+{% endblock %}
