@@ -227,7 +227,8 @@ document.addEventListener('click', function (e) {
       .then(function (j) { data = j.accounts; render(); }).catch(function () { data = null; failed = true; render(); });
   }
   document.addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && (e.key || '').toLowerCase() === 'k' || e.code === 'KeyK') { e.preventDefault(); dlg.open ? dlg.close() : open(); }
+    var mod = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+    if (mod && !e.altKey && !e.shiftKey && ((e.key || '').toLowerCase() === 'k' || e.code === 'KeyK')) { e.preventDefault(); dlg.open ? dlg.close() : open(); }
   });
   document.addEventListener('click', function (e) { if (e.target.closest('[data-open-palette]')) open(); });
   input.addEventListener('input', render);
