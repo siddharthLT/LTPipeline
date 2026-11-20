@@ -6,11 +6,32 @@
   <span class="eyebrow">Actions</span>
   <h1 class="t-h1">Everything that needs to happen</h1>
   <p class="t-meta health__sort">Show:
-    <a href="?show=open" {% if show == 'open' %}aria-current="true"{% endif %}>Open ({{ counts.open }})</a>
-    <a href="?show=done" {% if show == 'done' %}aria-current="true"{% endif %}>Done ({{ counts.done }})</a>
-    <a href="?show=all" {% if show == 'all' %}aria-current="true"{% endif %}>All ({{ counts.all }})</a>
+    <a href="?show=open{% if query %}&{{ query }}{% endif %}" {% if show == 'open' %}aria-current="true"{% endif %}>Open ({{ counts.open }})</a>
+    <a href="?show=done{% if query %}&{{ query }}{% endif %}" {% if show == 'done' %}aria-current="true"{% endif %}>Done ({{ counts.done }})</a>
+    <a href="?show=all{% if query %}&{{ query }}{% endif %}" {% if show == 'all' %}aria-current="true"{% endif %}>All ({{ counts.all }})</a>
   </p>
 </header>
+
+<form method="get" class="card actfilter">
+  <input type="hidden" name="show" value="{{ show }}">
+  <details class="actfilter__companies"{% if picked %} open{% endif %}>
+    <summary class="field-label">Companies{% if picked %} ({{ picked|length }} selected){% else %} (all){% endif %}</summary>
+    <div class="actfilter__list">
+      {% for a in accounts %}
+      <label class="check-row"><input type="checkbox" name="company" value="{{ a.pk }}"{% if a.pk in picked %} checked{% endif %}><span>{{ a.name }} <span class="t-meta mono">{{ a.score }}%</span></span></label>
+      {% endfor %}
+    </div>
+  </details>
+  <div class="actfilter__prob">
+    <span class="field-label">Probability</span>
+    <label class="t-meta">from <input type="number" name="min" min="0" max="100" value="{{ low }}" class="field__input field__input--plain actfilter__num">%</label>
+    <label class="t-meta">to <input type="number" name="max" min="0" max="100" value="{{ high }}" class="field__input field__input--plain actfilter__num">%</label>
+  </div>
+  <div class="actfilter__btns">
+    <button type="submit" class="btn btn--primary btn--sm">Apply</button>
+    {% if filtered %}<a class="btn btn--quiet btn--sm" href="?show={{ show }}">Clear</a>{% endif %}
+  </div>
+</form>
 
 <div class="actcols">
   <section class="card actcol">

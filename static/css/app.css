@@ -593,3 +593,11 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .actcol { display: grid; gap: var(--s-3); }
 .actcol__t { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; display: flex; align-items: center; gap: 8px; }
 @media (max-width: 900px) { .actcols { grid-template-columns: minmax(0, 1fr); } }
+.actfilter { display: grid; grid-template-columns: 1fr auto auto; gap: var(--s-4); align-items: start; margin-bottom: var(--s-4); }
+.actfilter summary { cursor: pointer; }
+.actfilter__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--s-2) var(--s-4); margin-top: var(--s-3); max-height: 280px; overflow-y: auto; }
+.actfilter__prob { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.actfilter__prob .field-label { width: 100%; }
+.actfilter__num { width: 72px; }
+.actfilter__btns { display: flex; gap: var(--s-2); align-items: center; }
+@media (max-width: 900px) { .actfilter { grid-template-columns: minmax(0, 1fr); } }

@@ -211,17 +211,25 @@ def actions(request):
     show = request.GET.get('show', 'open')
     if show not in ('open', 'done', 'all'):
         show = 'open'
+    picked = {int(c) for c in request.GET.getlist('company') if c.isdigit()}
+    low = _number(request.GET.get('min'), 0, 0, 100)
+    high = _number(request.GET.get('max'), 100, 0, 100)
     tasks = Task.objects.select_related('account').prefetch_related('account__stage_progress')
-    if show == 'open':
-        tasks = tasks.filter(done=False)
-    elif show == 'done':
-        tasks = tasks.filter(done=True)
-    counts = {'open': Task.objects.filter(done=False).count(), 'done': Task.objects.filter(done=True).count()}
+    if picked:
+        tasks = tasks.filter(account_id__in=picked)
+    tasks = [t for t in tasks if low <= t.account.score <= high]
+    counts = {'open': sum(not t.done for t in tasks), 'done': sum(t.done for t in tasks)}
     counts['all'] = counts['open'] + counts['done']
-    tasks = list(tasks)
+    if show != 'all':
+        tasks = [t for t in tasks if t.done == (show == 'done')]
+    accounts = sorted(Account.objects.prefetch_related('stage_progress'), key=lambda a: a.name.lower())
+    query = request.GET.copy()
+    query.pop('show', None)
     clients = [t for t in tasks if t.account.score >= 100]  # active clients: every deal stage reached
     return render(request, 'pipeline/actions.html', {
-        'pipeline_tasks': [t for t in tasks if t.account.score < 100], 'client_tasks': clients, 'show': show, 'counts': counts, 'today': datetime.date.today(), 'nav': 'actions'})
+        'pipeline_tasks': [t for t in tasks if t.account.score < 100], 'client_tasks': clients, 'show': show,
+        'counts': counts, 'today': datetime.date.today(), 'nav': 'actions', 'accounts': accounts, 'picked': picked,
+        'low': low, 'high': high, 'filtered': bool(picked) or low > 0 or high < 100, 'query': query.urlencode()})
 
 
 @login_required
