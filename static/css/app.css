@@ -587,3 +587,9 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .tier { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; background: var(--line); color: var(--ink-2); }
 .tier--power { background: var(--teal-50); color: var(--teal-deep); font-weight: 600; }
 .tier--active { background: var(--teal-50); color: var(--teal-deep); }
+
+/* Actions page: two columns, full width */
+.actcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); align-items: start; }
+.actcol { display: grid; gap: var(--s-3); }
+.actcol__t { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+@media (max-width: 900px) { .actcols { grid-template-columns: minmax(0, 1fr); } }

@@ -211,15 +211,17 @@ def actions(request):
     show = request.GET.get('show', 'open')
     if show not in ('open', 'done', 'all'):
         show = 'open'
-    tasks = Task.objects.select_related('account')
+    tasks = Task.objects.select_related('account').prefetch_related('account__stage_progress')
     if show == 'open':
         tasks = tasks.filter(done=False)
     elif show == 'done':
         tasks = tasks.filter(done=True)
     counts = {'open': Task.objects.filter(done=False).count(), 'done': Task.objects.filter(done=True).count()}
     counts['all'] = counts['open'] + counts['done']
+    tasks = list(tasks)
+    clients = [t for t in tasks if t.account.score >= 100]  # active clients: every deal stage reached
     return render(request, 'pipeline/actions.html', {
-        'tasks': tasks, 'show': show, 'counts': counts, 'today': datetime.date.today(), 'nav': 'actions'})
+        'pipeline_tasks': [t for t in tasks if t.account.score < 100], 'client_tasks': clients, 'show': show, 'counts': counts, 'today': datetime.date.today(), 'nav': 'actions'})
 
 
 @login_required

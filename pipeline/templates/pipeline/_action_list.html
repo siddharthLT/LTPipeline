@@ -1,0 +1,24 @@
+{% if items %}
+  <ul class="actions">
+    {% for t in items %}
+    <li class="action{% if t.done %} is-done{% endif %}">
+      <button type="button" class="action__check" role="checkbox" aria-checked="{% if t.done %}true{% else %}false{% endif %}"
+              data-toggle-url="{% url 'pipeline:action_toggle' t.account_id t.pk %}" aria-label="{% if t.done %}Reopen{% else %}Mark done{% endif %}: {{ t.title }}">
+        <span class="checks__box" aria-hidden="true">{% if t.done %}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% endif %}</span>
+      </button>
+      <div class="action__body">
+        <p class="action__t">{{ t.title }}</p>
+        <p class="t-meta">
+          <a class="tag tag--outline" href="{% url 'pipeline:account_detail' t.account_id %}#next-actions">{{ t.account.name }}</a>
+          <span class="tag tag--outline">Owner: {{ t.owner|default:"not set" }}</span>
+          <span class="tag mono{% if not t.done and t.due_date and t.due_date < today %} tag--mark{% endif %}">{% if t.due_date %}{{ t.due_date|date:"M j, Y" }}{% else %}No date{% endif %}</span>
+        </p>
+      </div>
+      <button type="button" class="icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' t.account_id 'action' t.pk %}" aria-label="Edit action">{% include "partials/pen.html" %}</button>
+      <button type="button" class="btn btn--quiet btn--sm btn--danger" data-delete-url="{% url 'pipeline:item_delete' t.account_id 'action' t.pk %}">Delete</button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="t-muted">{% if show == 'done' %}Nothing marked done yet.{% else %}No open actions.{% endif %}</p>
+  {% endif %}
