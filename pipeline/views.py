@@ -232,29 +232,41 @@ def actions(request):
         'low': low, 'high': high, 'filtered': bool(picked) or low > 0 or high < 100, 'query': query.urlencode()})
 
 
-def _slide_text(text, limit):
-    """Trim long thesis text for a slide, at a sentence or line end where possible. The full text stays on the thesis page."""
-    text = (text or '').strip()
-    if len(text) <= limit:
-        return text
-    cut = text[:limit]
-    ends = [cut.rfind(m) for m in ('. ', '.\n', '\n')]
-    best = max(ends)
-    cut = cut[:best + 1] if best >= limit * 0.55 else cut[:cut.rfind(' ')]
-    return cut.rstrip(' ,;:') + ('' if cut.endswith('.') else '') + ' …'
+def _lines(text):
+    """One entry per non-empty line, bullet marks removed."""
+    return [ln.strip().lstrip('-•* ').strip() for ln in (text or '').splitlines() if ln.strip()]
+
+
+def _ago(days):
+    return 'today' if days <= 0 else 'yesterday' if days == 1 else f'{days} days ago'
 
 
 @login_required
 def hand_raisers(request):
-    """Slide deck, two slides per selected account. Only shows what was picked on the Pipeline page (?ids=1,2,3)."""
+    """Deal-movement deck for the accounts picked on the Pipeline page (?ids=1,2,3). Uses only stored data."""
+    today = datetime.date.today()
     ids = [int(i) for i in request.GET.get('ids', '').split(',') if i.strip().isdigit()]
-    by_id = {a.pk: a for a in Account.objects.filter(pk__in=ids).prefetch_related('stage_progress', 'tasks')}
+    by_id = {a.pk: a for a in Account.objects.filter(pk__in=ids).prefetch_related('stage_progress', 'tasks', 'events')}
     accounts = [by_id[i] for i in dict.fromkeys(ids) if i in by_id]
-    for a in accounts:
-        a.slide = {f: _slide_text(getattr(a, f), 420) for f in ('pain_now', 'why_buy', 'who_cares')}
-        a.slide.update({f: _slide_text(getattr(a, f), 260) for f in ('what_they_do', 'who_they_service', 'icp')})
+    overview = len(accounts) > 1
+    for n, a in enumerate(accounts):
+        a.slide_no = (1 if overview else 0) + 2 * n + 1
+        furthest = a.furthest_stage
+        a.rows = a.stage_rows()
+        for r in a.rows:
+            r['state'] = 'done' if r['done'] else 'part' if r['met'] else 'gap' if r['num'] < furthest else 'open'
+            r['current'] = furthest > 0 and r['num'] == furthest
+        a.next_row = a.rows[furthest] if furthest < len(a.rows) else None
+        a.feed = sorted(a.events.all(), key=lambda e: (e.date, e.id), reverse=True)[:4]
+        last = a.feed[0] if a.feed else None
+        a.last_touch = {'ago': _ago((today - last.date).days), 'date': last.date, 'kind': last.get_kind_display()} if last else None
         a.deck_actions = sorted(a.open_actions(), key=lambda t: (t.due_date is None, t.due_date or datetime.date.max, t.id))
-    return render(request, 'pipeline/hand_raisers.html', {'accounts': accounts, 'today': datetime.date.today()})
+        a.overdue = sum(1 for t in a.deck_actions if t.due_date and t.due_date < today)
+        a.next_dated = next((t for t in a.deck_actions if t.due_date), None)
+        a.blocker_list, a.must_list = _lines(a.blockers), _lines(a.must_happen)
+        a.buyer_line = (_lines(a.buyer) or [''])[0]
+        a.champion_line = (_lines(a.champion) or [''])[0]
+    return render(request, 'pipeline/hand_raisers.html', {'accounts': accounts, 'today': today, 'overview': overview})
 
 
 @login_required

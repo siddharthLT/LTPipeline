@@ -4,6 +4,7 @@
 {% block head %}<link rel="stylesheet" href="{% static 'css/deck.css' %}">{% endblock %}
 {% block body %}
 {% if accounts %}
+<script>window.HR_DECK = true;</script>
 <div class="deck" data-deck>
   <header class="deck__bar">
     <a class="deck__back" href="{% url 'pipeline:dashboard' %}">
@@ -11,60 +12,163 @@
       Pipeline
     </a>
     <span class="deck__title">Hand Raisers view</span>
-    <button type="button" class="deck__print" onclick="window.print()">Print or save as PDF</button>
+    <span class="deck__spacer"></span>
+    <button type="button" class="deck__tool" data-edit-toggle aria-pressed="false">
+      {% include "partials/pen.html" %} <span>Edit</span>
+    </button>
+    <button type="button" class="deck__tool" onclick="window.print()">Print or save as PDF</button>
   </header>
 
   <main class="deck__stage" data-stage>
     <div class="deck__canvas" data-canvas>
+
+      {% if overview %}
+      <section class="slide slide--overview" data-slide aria-label="All deals">
+        <div class="slide__head">
+          <div class="slide__id">
+            <span class="eyebrow">Hand raisers</span>
+            <h1 class="slide__name">How these deals are moving</h1>
+          </div>
+          <span class="slide__legend"><i class="lg lg--done"></i>Done <i class="lg lg--part"></i>Part met <i class="lg lg--open"></i>Not yet</span>
+        </div>
+        <div class="ov">
+          <div class="ov__row ov__row--head"><span>Company</span><span>Journey, 12 steps</span><span class="ov__c">Probability</span><span>Last activity</span><span>Next dated action</span></div>
+          {% for a in accounts %}
+          <button type="button" class="ov__row" data-goto="{{ a.slide_no }}">
+            <span class="ov__co"><strong>{{ a.name }}</strong><span class="mono">{{ a.furthest_stage_name }}</span></span>
+            <span class="ov__strip" aria-hidden="true">{% for r in a.rows %}<i class="ov__cell ov__cell--{{ r.state }}{% if r.current %} is-current{% endif %}"></i>{% endfor %}</span>
+            <span class="ov__prob"><strong class="mono">{{ a.score }}%</strong><span class="ov__bar"><span style="width: {{ a.score }}%"></span></span></span>
+            <span class="ov__last">{% if a.last_touch %}<strong>{{ a.last_touch.ago }}</strong><span class="mono">{{ a.last_touch.date|date:"M j" }} · {{ a.last_touch.kind }}</span>{% else %}<span class="slide__none">Nothing logged</span>{% endif %}</span>
+            <span class="ov__next">{% if a.next_dated %}<strong>{{ a.next_dated.title }}</strong><span class="mono{% if a.next_dated.due_date < today %} is-late{% endif %}">{{ a.next_dated.due_date|date:"M j" }}{% if a.next_dated.owner %} · {{ a.next_dated.owner }}{% endif %}</span>{% else %}<span class="slide__none">No dated action</span>{% endif %}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
       {% for a in accounts %}
-      <section class="slide slide--thesis" data-slide aria-label="{{ a.name }}: buying thesis">
+      {# ---------- Slide A: where the deal stands and how it has moved ---------- #}
+      <section class="slide slide--progress" data-slide aria-label="{{ a.name }}: progress">
         <div class="slide__head">
           <div class="slide__id">
             <span class="eyebrow">Hand raiser {{ forloop.counter }} of {{ accounts|length }}</span>
             <h1 class="slide__name">{{ a.name }}</h1>
-            <p class="slide__dom mono">{{ a.domain }}{% if a.deal_value %} · {{ a.deal_value }}{% endif %}</p>
+            <p class="slide__dom mono">{{ a.domain }}</p>
           </div>
-          <span class="slide__chips">
-            <span class="slide__stat"><span class="slide__k">Latest stage</span><strong>{{ a.furthest_stage_name }}</strong><span class="mono">Step {{ a.furthest_stage }} of 12</span></span>
-            <span class="slide__stat slide__stat--prob">{% include "partials/donut.html" with pct=a.score arc=a.score_arc size=44 %}<span><span class="slide__k">Probability</span><strong class="mono">{{ a.score }}%</strong></span></span>
+          <span class="slide__prob">
+            {% include "partials/donut.html" with pct=a.score arc=a.score_arc size=64 %}
+            <span><span class="slide__k">Probability</span><strong class="mono">{{ a.score }}%</strong><span class="slide__sub">{% if a.furthest_stage %}{{ a.furthest_stage_name }}, step {{ a.furthest_stage }} of 12{% else %}Not started{% endif %}</span></span>
           </span>
         </div>
 
-        <div class="slide__main">
-          <article class="slide__blk"><h2>Pain now</h2><div class="hr-fit">{% if a.slide.pain_now %}{{ a.slide.pain_now }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
-          <article class="slide__blk"><h2>Why they would buy</h2><div class="hr-fit">{% if a.slide.why_buy %}{{ a.slide.why_buy }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
-          <article class="slide__blk"><h2>Who cares</h2><div class="hr-fit">{% if a.slide.who_cares %}{{ a.slide.who_cares }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+        <div class="kpis">
+          <div class="kpi"><span class="slide__k">Deal value</span><strong class="mono">{{ a.deal_value|default:"Not set" }}</strong>
+            <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'company' %}" aria-label="Edit deal value">{% include "partials/pen.html" %}</button></div>
+          <div class="kpi kpi--wide"><span class="slide__k">Pilot</span><strong class="clamp-2">{{ a.pilot_value|default:"Not set" }}</strong><span class="mono slide__sub">{% if a.pilot_date %}{{ a.pilot_date|date:"M j, Y" }}{% endif %}</span>
+            <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'commercial' %}" aria-label="Edit pilot">{% include "partials/pen.html" %}</button></div>
+          <div class="kpi kpi--wide"><span class="slide__k">Annual</span><strong class="clamp-2">{{ a.annual_value|default:a.deal_value|default:"Not set" }}</strong><span class="mono slide__sub">{% if a.annual_date %}{{ a.annual_date|date:"M j, Y" }}{% endif %}</span>
+            <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'commercial' %}" aria-label="Edit annual">{% include "partials/pen.html" %}</button></div>
+          <div class="kpi"><span class="slide__k">Last activity</span>
+            {% if a.last_touch %}<strong>{{ a.last_touch.ago }}</strong><span class="mono slide__sub">{{ a.last_touch.date|date:"M j" }} · {{ a.last_touch.kind }}</span>{% else %}<strong class="slide__none">Nothing logged</strong>{% endif %}</div>
+          <div class="kpi"><span class="slide__k">Open actions</span><strong class="mono">{{ a.deck_actions|length }}</strong>
+            <span class="slide__sub{% if a.overdue %} is-late{% endif %}">{% if a.overdue %}{{ a.overdue }} overdue{% else %}none overdue{% endif %}</span></div>
         </div>
-        <div class="slide__sub">
-          <article class="slide__blk slide__blk--soft"><h2>What they do</h2><div class="hr-fit">{% if a.slide.what_they_do %}{{ a.slide.what_they_do }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
-          <article class="slide__blk slide__blk--soft"><h2>Who they service</h2><div class="hr-fit">{% if a.slide.who_they_service %}{{ a.slide.who_they_service }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
-          <article class="slide__blk slide__blk--soft"><h2>Their ICP</h2><div class="hr-fit">{% if a.slide.icp %}{{ a.slide.icp }}{% else %}<span class="slide__none">Not filled in yet</span>{% endif %}</div></article>
+
+        <div class="jn-card">
+          <ol class="jn">
+            {% for r in a.rows %}
+            <li class="jn__s is-{{ r.state }}{% if r.current %} is-current{% endif %}">
+              <button type="button" class="jn__btn" data-edit-url="{% url 'pipeline:stage_edit' a.pk r.num %}" aria-label="Edit step {{ r.num }}: {{ r.name }}">
+                <span class="jn__dot">{% if r.state == 'done' %}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% else %}{{ r.num }}{% endif %}</span>
+                <span class="jn__n">{{ r.name }}</span>
+                <span class="jn__d mono">{% if r.target_date %}{{ r.target_date|date:"M j" }}{% elif r.state == 'part' %}{{ r.met }}/{{ r.total }}{% endif %}</span>
+              </button>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+
+        <div class="cols">
+          <section class="pane">
+            <header class="pane__head"><h2>Moving lately</h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_new' a.pk 'event' %}" aria-label="Add an update">{% include "partials/plus.html" %}</button></header>
+            {% if a.feed %}
+            <ul class="feed">
+              {% for e in a.feed %}
+              <li class="feed__i">
+                <span class="feed__d mono">{{ e.date|date:"M j" }}</span>
+                <span class="feed__k">{{ e.get_kind_display }}</span>
+                <p class="feed__t">{{ e.text }}</p>
+                <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' a.pk 'event' e.pk %}" aria-label="Edit update">{% include "partials/pen.html" %}</button>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}<p class="slide__none pane__empty">Nothing logged yet.</p>{% endif %}
+          </section>
+
+          <section class="pane">
+            <header class="pane__head"><h2>{% if a.next_row %}To clear step {{ a.next_row.num }}: {{ a.next_row.name }}{% else %}All 12 steps done{% endif %}</h2>
+              {% if a.next_row %}<button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:stage_edit' a.pk a.next_row.num %}" aria-label="Edit step {{ a.next_row.num }}">{% include "partials/pen.html" %}</button>{% endif %}</header>
+            {% if a.next_row %}
+            <ul class="chk">
+              {% for c in a.next_row.criteria %}
+              <li class="chk__i{% if c.met %} is-met{% endif %}"><span class="chk__b" aria-hidden="true">{% if c.met %}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg>{% endif %}</span><span>{{ c.label }}</span></li>
+              {% endfor %}
+            </ul>
+            {% if a.next_row.target_date %}<p class="slide__sub mono pane__foot">Target {{ a.next_row.target_date|date:"M j, Y" }}</p>{% endif %}
+            {% endif %}
+          </section>
         </div>
       </section>
 
-      <section class="slide slide--actions" data-slide aria-label="{{ a.name }}: actions">
+      {# ---------- Slide B: what is in the way and what happens next ---------- #}
+      <section class="slide slide--next" data-slide aria-label="{{ a.name }}: what happens next">
         <div class="slide__head">
           <div class="slide__id">
             <span class="eyebrow">{{ a.name }}</span>
-            <h1 class="slide__name">What needs to happen</h1>
+            <h1 class="slide__name">What happens next</h1>
           </div>
-          <span class="slide__chips"><span class="slide__stat"><span class="slide__k">Open actions</span><strong class="mono">{{ a.deck_actions|length }}</strong></span></span>
+          <span class="slide__legend">{{ a.score }}% · {{ a.furthest_stage_name }}</span>
         </div>
-        <div class="slide__table hr-fit">
-          {% if a.deck_actions %}
-          <table>
-            <thead><tr><th>Action</th><th class="col-owner">Owner</th><th class="col-date">Date</th></tr></thead>
-            <tbody>
-              {% for t in a.deck_actions %}
-              <tr>
-                <td>{{ t.title }}</td>
-                <td class="col-owner">{{ t.owner|default:"Not set" }}</td>
-                <td class="col-date mono{% if t.due_date and t.due_date < today %} is-late{% endif %}">{% if t.due_date %}{{ t.due_date|date:"M j, Y" }}{% else %}No date{% endif %}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}<p class="slide__none">No open actions.</p>{% endif %}
+
+        <div class="cols cols--next">
+          <section class="pane pane--way">
+            <header class="pane__head"><h2>In the way</h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'people' %}" aria-label="Edit blockers">{% include "partials/pen.html" %}</button></header>
+            <div class="way hr-fit">
+              <div class="way__g"><h3>Blockers</h3>{% if a.blocker_list %}<ul>{% for b in a.blocker_list|slice:":4" %}<li>{{ b }}</li>{% endfor %}</ul>{% if a.blocker_list|length > 4 %}<span class="slide__sub">+{{ a.blocker_list|length|add:"-4" }} more</span>{% endif %}{% else %}<p class="slide__none">None recorded</p>{% endif %}</div>
+              <div class="way__g way__g--risk"><h3>Biggest risk</h3>{% if a.biggest_risk %}<p class="clamp-4">{{ a.biggest_risk }}</p>{% else %}<p class="slide__none">Not set</p>{% endif %}
+                <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'move' %}" aria-label="Edit risk and what has to happen">{% include "partials/pen.html" %}</button></div>
+              <div class="way__g"><h3>Has to happen</h3>{% if a.must_list %}<ul>{% for b in a.must_list|slice:":4" %}<li>{{ b }}</li>{% endfor %}</ul>{% if a.must_list|length > 4 %}<span class="slide__sub">+{{ a.must_list|length|add:"-4" }} more</span>{% endif %}{% else %}<p class="slide__none">Not set</p>{% endif %}</div>
+            </div>
+            <div class="who">
+              <div><span class="slide__k">Buyer</span><p class="clamp-2">{{ a.buyer_line|default:"Not set" }}</p></div>
+              <div><span class="slide__k">Champion</span><p class="clamp-2">{{ a.champion_line|default:"Not set" }}</p></div>
+            </div>
+          </section>
+
+          <section class="pane pane--actions">
+            <header class="pane__head"><h2>Next actions <span class="pane__n mono">{{ a.deck_actions|length }}</span></h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_new' a.pk 'action' %}" aria-label="Add action">{% include "partials/plus.html" %}</button></header>
+            <div class="acts hr-fit{% if a.deck_actions|length > 8 %} acts--dense{% endif %}">
+              {% if a.deck_actions %}
+              <table>
+                <thead><tr><th class="c-chk"></th><th>Action</th><th class="c-own">Owner</th><th class="c-date">Date</th><th class="c-ed"></th></tr></thead>
+                <tbody>
+                  {% for t in a.deck_actions %}
+                  <tr>
+                    <td class="c-chk"><button type="button" class="tick" role="checkbox" aria-checked="false" data-toggle-url="{% url 'pipeline:action_toggle' a.pk t.pk %}" aria-label="Mark done: {{ t.title }}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.6l4.3 4.3L19 7.2"/></svg></button></td>
+                    <td class="c-title"><span class="clamp-2">{{ t.title }}</span></td>
+                    <td class="c-own">{{ t.owner|default:"Not set" }}</td>
+                    <td class="c-date mono{% if t.due_date and t.due_date < today %} is-late{% endif %}">{% if t.due_date %}{{ t.due_date|date:"M j" }}{% else %}No date{% endif %}</td>
+                    <td class="c-ed"><button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:item_edit' a.pk 'action' t.pk %}" aria-label="Edit action">{% include "partials/pen.html" %}</button></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% else %}<p class="slide__none pane__empty">No open actions.</p>{% endif %}
+            </div>
+          </section>
         </div>
       </section>
       {% endfor %}
@@ -80,9 +184,12 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg>
     </button>
     <span class="deck__progress"><span data-progress></span></span>
-    <span class="deck__hint">Arrow keys to move</span>
+    <span class="deck__hint" data-hint>Arrow keys to move</span>
   </footer>
 </div>
+<dialog class="modal modal--edit" id="edit-modal" aria-labelledby="edit-modal-title">
+  <div data-modal-slot></div>
+</dialog>
 <script src="{% static 'js/deck.js' %}" defer></script>
 {% else %}
 <main class="deck-empty">

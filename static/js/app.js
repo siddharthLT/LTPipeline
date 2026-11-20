@@ -41,7 +41,7 @@
     });
   }
   function done(json) {
-    if (json && json.anchor) location.hash = json.anchor;
+    if (json && json.anchor && !window.HR_DECK) location.hash = json.anchor;
     location.reload();
   }
   function openEdit(url) {
