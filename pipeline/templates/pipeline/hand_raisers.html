@@ -61,36 +61,6 @@
           </span>
         </div>
 
-        <section class="pane pane--problem">
-          <header class="pane__head"><h2>The problem they would buy BioLens for</h2>
-            <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'why' %}" aria-label="Edit the problem">{% include "partials/pen.html" %}</button></header>
-          <div class="prob">
-            <div><span class="slide__k">Pain now</span>{% if a.pain_now %}<p>{{ a.pain_now|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}</div>
-            <div><span class="slide__k">Why they would buy</span>{% if a.why_buy %}<p>{{ a.why_buy|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}</div>
-            <div><span class="slide__k">Who cares</span>{% if a.who_cares %}<p>{{ a.who_cares|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
-              <button type="button" class="ed icon-btn icon-btn--sm prob__ed" data-edit-url="{% url 'pipeline:edit_section' a.pk 'people' %}" aria-label="Edit who cares">{% include "partials/pen.html" %}</button></div>
-          </div>
-        </section>
-
-        <div class="trio">
-          <section class="pane pane--soft">
-            <header class="pane__head"><h2>What they do</h2>
-              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'overview' %}" aria-label="Edit what they do">{% include "partials/pen.html" %}</button></header>
-            {% if a.what_they_do %}<p>{{ a.what_they_do|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
-            {% if a.what_they_service %}<span class="slide__k trio__k">What they service</span><p>{{ a.what_they_service|linebreaksbr }}</p>{% endif %}
-          </section>
-          <section class="pane pane--soft">
-            <header class="pane__head"><h2>Who they service</h2>
-              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'overview' %}" aria-label="Edit who they service">{% include "partials/pen.html" %}</button></header>
-            {% if a.who_they_service %}<p>{{ a.who_they_service|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
-          </section>
-          <section class="pane pane--soft">
-            <header class="pane__head"><h2>Their ICP</h2>
-              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'icp' %}" aria-label="Edit their ICP">{% include "partials/pen.html" %}</button></header>
-            {% if a.icp_list %}<ul class="bul">{% for line in a.icp_list %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
-          </section>
-        </div>
-
         <section class="pane pane--stage">
           <header class="pane__head"><h2>Current stage: {% if a.furthest_stage %}{{ a.furthest_stage_name }}, step {{ a.furthest_stage }} of 12{% else %}not started{% endif %}</h2></header>
           <ol class="jn">
@@ -148,6 +118,38 @@
             {% if a.next_row.target_date %}<p class="slide__sub mono pane__foot">Target {{ a.next_row.target_date|date:"M j, Y" }}</p>{% endif %}
             {% endif %}
           </section>
+        </div>
+        <div class="thesis">
+          <div class="print-cont">{{ a.name }}: company and problem</div>
+        <section class="pane pane--problem">
+          <header class="pane__head"><h2>The problem they would buy BioLens for</h2>
+            <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'why' %}" aria-label="Edit the problem">{% include "partials/pen.html" %}</button></header>
+          <div class="prob">
+            <div><span class="slide__k">Pain now</span>{% if a.pain_now %}<p>{{ a.pain_now|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}</div>
+            <div><span class="slide__k">Why they would buy</span>{% if a.why_buy %}<p>{{ a.why_buy|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}</div>
+            <div><span class="slide__k">Who cares</span>{% if a.who_cares %}<p>{{ a.who_cares|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
+              <button type="button" class="ed icon-btn icon-btn--sm prob__ed" data-edit-url="{% url 'pipeline:edit_section' a.pk 'people' %}" aria-label="Edit who cares">{% include "partials/pen.html" %}</button></div>
+          </div>
+        </section>
+
+        <div class="trio">
+          <section class="pane pane--soft">
+            <header class="pane__head"><h2>What they do</h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'overview' %}" aria-label="Edit what they do">{% include "partials/pen.html" %}</button></header>
+            {% if a.what_they_do %}<p>{{ a.what_they_do|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
+            {% if a.what_they_service %}<span class="slide__k trio__k">What they service</span><p>{{ a.what_they_service|linebreaksbr }}</p>{% endif %}
+          </section>
+          <section class="pane pane--soft">
+            <header class="pane__head"><h2>Who they service</h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'overview' %}" aria-label="Edit who they service">{% include "partials/pen.html" %}</button></header>
+            {% if a.who_they_service %}<p>{{ a.who_they_service|linebreaksbr }}</p>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
+          </section>
+          <section class="pane pane--soft">
+            <header class="pane__head"><h2>Their ICP</h2>
+              <button type="button" class="ed icon-btn icon-btn--sm" data-edit-url="{% url 'pipeline:edit_section' a.pk 'icp' %}" aria-label="Edit their ICP">{% include "partials/pen.html" %}</button></header>
+            {% if a.icp_list %}<ul class="bul">{% for line in a.icp_list %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p class="slide__none">Not filled in yet</p>{% endif %}
+          </section>
+        </div>
         </div>
       </section>
 
