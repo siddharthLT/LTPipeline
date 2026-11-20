@@ -349,3 +349,84 @@ class ForecastTests(TestCase):
         self.client.force_login(user)
         Account.objects.create(name='A', domain='a.com')
         self.assertContains(self.client.get('/'), 'id="arr-data"')
+
+
+class UsageVisualTests(Base):
+    """Product usage shapes and the recordings tab, with PostHog answered from fixtures."""
+
+    def test_replay_helpers(self):
+        from . import posthog
+        self.assertEqual(posthog.area_of('https://app.lunartree.bio/biolens/workspaces/5af5f95f-3b60-4e6b-b9ef-a050b72202b2/companies'), 'Workspace companies')
+        self.assertEqual(posthog.area_of('https://app.lunartree.bio/login?next=/x'), 'Signing in')
+        self.assertEqual(posthog.area_of('https://app.lunartree.bio/biolens'), 'Home')
+        self.assertIsNone(posthog.area_of('https://app.lunartree.bio/somewhere/else'))
+        self.assertEqual([posthog.bucket(s) for s in (5, 30, 119, 120, 599, 600, 1799, 1800, 99999)],
+                         ['blip', 'short', 'short', 'mid', 'mid', 'long', 'long', 'deep', 'deep'])
+        self.assertEqual(posthog._title([('Sent an email', 'act'), ('Viewed a company', 'view')], ['Home']), 'Sent an email · Viewed a company')
+        self.assertEqual(posthog._title([], ['Signing in']), 'Sign-in only')
+        self.assertEqual(posthog._title([], ['Signing in', 'Home']), 'Browsed Home')
+
+    def test_duration_filters(self):
+        from .templatetags.pipeline_extras import clock, spent
+        self.assertEqual(clock(65), '1:05')
+        self.assertEqual(clock(3729), '1:02:09')
+        self.assertEqual(clock(170310), '47h 18m')
+        self.assertEqual(spent(45), '45s')
+        self.assertEqual(spent(720), '12 min')
+        self.assertEqual(spent(11100), '3h 05m')
+
+    def test_shape_counts_page_views_and_builds_strips(self):
+        import datetime
+        from . import posthog
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        day = today.isoformat()
+        user = {'email': 'a@x.com', 'name': 'Ann Lee', 'evts': 3, 'sessions': 2, 'acts': 1, 'ai': 1, 'rage': 0, 'pvs': 12,
+                'feats': 2, 'last_seen': day, 'profiles': 4, 'tier': posthog.tier({'acts': 1, 'feats': 2, 'evts': 3, 'pvs': 12})}
+        self.assertEqual(user['tier'], 'Active')
+        self.assertEqual(posthog.tier({'acts': 0, 'feats': 1, 'evts': 3, 'pvs': 12}), 'Browser')
+        rows = [{'account': self.account, 'users': [user], 'evts': 3, 'sessions': 2, 'acts': 1, 'ai': 1, 'rage': 0, 'profiles': 4,
+                 'last_seen': day, 'feats': 2}]
+        counts = [1] + [0] * (len(posthog.ACTIONS) - 1)
+        daily = [{'day': day, 'email': 'a@x.com', 'account': self.account, 'pvs': 12, 'counts': counts, 'total': 3}]
+        sh = posthog.shape(rows, daily, 7)
+        self.assertEqual(len(sh['series']), 8)
+        self.assertEqual(sh['series'][-1]['total'], 15)  # 12 page views + 3 tracked events
+        self.assertEqual(sh['series'][-1]['share'], 7)  # 1 of 15 is an action
+        card = sh['cards'][0]
+        self.assertEqual(card['active_days'], 1)
+        self.assertGreaterEqual(card['strip'][-1]['lvl'], 1)
+        self.assertEqual(card['people'][0]['ini'], 'AL')
+        self.assertEqual(sh['features'][0]['label'], 'Company profiles read')
+
+    def test_usage_tabs_render(self):
+        import datetime
+        from unittest import mock
+        from . import posthog
+        now = datetime.datetime.now(datetime.timezone.utc)
+        day = now.date().isoformat()
+        user = {'email': 'a@x.com', 'name': 'Ann Lee', 'evts': 3, 'sessions': 2, 'acts': 1, 'ai': 0, 'rage': 0, 'pvs': 5,
+                'feats': 2, 'last_seen': day, 'profiles': 0, 'tier': 'Active'}
+        rows = [{'account': self.account, 'users': [user], 'evts': 3, 'sessions': 2, 'acts': 1, 'ai': 0, 'rage': 0, 'profiles': 0,
+                 'last_seen': day, 'feats': 2}]
+        daily = [{'day': day, 'email': 'a@x.com', 'account': self.account, 'pvs': 5, 'counts': [0] * len(posthog.ACTIONS), 'total': 3}]
+        totals = {'users': 1, 'matched_users': 1, 'evts': 3, 'acts': 1, 'ai': 0, 'rage': 0}
+        rec = {'id': 'sess-1', 'url': 'https://us.posthog.com/project/1/replay/sess-1', 'email': 'a@x.com', 'name': 'Ann Lee', 'ini': 'AL',
+               'country': 'India', 'browser': 'Chrome', 'os': 'Mac OS X', 'device': 'Desktop', 'start': now - datetime.timedelta(hours=2),
+               'dur': 400, 'active': 60, 'clicks': 5, 'keys': 2, 'errors': 0, 'areas': ['Home'], 'pages': 3,
+               'marks': [{'at': 10.5, 'kind': 'act'}, {'at': 50, 'kind': 'rage'}], 'did': ['Sent an email'], 'rage': 1,
+               'title': 'Sent an email', 'bucket': 'mid', 'live': 15}
+        self.account.domain = 'x.com'
+        self.account.save()
+        with mock.patch.object(posthog, 'join', return_value=(rows, [], daily, totals)), \
+                mock.patch.object(posthog, 'recordings', return_value=[dict(rec)]):
+            for tab in ('overview', 'accounts', 'users', 'daily', 'unmatched'):
+                r = self.client.get(reverse('pipeline:usage') + '?tab=' + tab)
+                self.assertEqual(r.status_code, 200, tab)
+                self.assertNotContains(r, 'Could not load usage', msg_prefix=tab)
+            r = self.client.get(reverse('pipeline:usage') + '?tab=recordings')
+            self.assertContains(r, 'rec__thumb--mid')
+            self.assertContains(r, 'https://us.posthog.com/project/1/replay/sess-1')
+            self.assertContains(r, 'Sent an email')
+            self.assertContains(r, '6:40')
+            self.assertContains(r, 'mk--rage')
+            self.assertContains(r, 'data-acct="%d"' % self.account.pk)

@@ -1,4 +1,5 @@
 {% extends "app.html" %}
+{% load static pipeline_extras %}
 {% block title %}Product usage · Lunartree{% endblock %}
 {% block page_class %}page--usage{% endblock %}
 {% block content %}
@@ -6,11 +7,22 @@
   <span class="eyebrow">Product usage</span>
   <h1 class="t-h1">Who is using BioLens</h1>
   <p class="t-meta">Live from PostHog, joined to tracker accounts by email domain (the domain on each account). Internal @lunartree.bio users are left out.</p>
-  <p class="t-meta health__sort">Window:
-    {% for w in windows %}<a href="?days={{ w }}&tab={{ tab }}" {% if w == days %}aria-current="true"{% endif %}>{{ w }} days</a>{% endfor %}
-    <a href="?days={{ days }}&tab={{ tab }}&refresh=1">Refresh</a>
-  </p>
 </header>
+
+<div class="usage__bar">
+  <nav class="seg" aria-label="Usage views">
+    <a class="seg__item" href="?days={{ days }}&tab=overview" {% if tab == 'overview' %}aria-pressed="true"{% endif %}>Overview</a>
+    <a class="seg__item" href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-pressed="true"{% endif %}>Accounts</a>
+    <a class="seg__item" href="?days={{ days }}&tab=recordings" {% if tab == 'recordings' %}aria-pressed="true"{% endif %}>Recordings</a>
+    <a class="seg__item" href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-pressed="true"{% endif %}>Users</a>
+    <a class="seg__item" href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-pressed="true"{% endif %}>Daily</a>
+    <a class="seg__item" href="?days={{ days }}&tab=unmatched" {% if tab == 'unmatched' %}aria-pressed="true"{% endif %}>Not in tracker{% if unmatched %} <span class="seg__count">{{ unmatched|length }}</span>{% endif %}</a>
+  </nav>
+  <nav class="seg" aria-label="Window">
+    {% for w in windows %}<a class="seg__item" href="?days={{ w }}&tab={{ tab }}" {% if w == days %}aria-pressed="true"{% endif %}>{{ w }}d</a>{% endfor %}
+  </nav>
+  <a class="btn btn--sm" href="?days={{ days }}&tab={{ tab }}&refresh=1">Refresh</a>
+</div>
 
 {% if error %}
 <section class="card"><p class="t-body"><strong>Could not load usage.</strong> {{ error }}</p></section>
@@ -24,13 +36,12 @@
   <div class="card usage__stat"><span class="t-meta">Rage clicks</span><strong>{{ totals.rage }}</strong></div>
 </section>
 
-<p class="t-meta health__sort usage__tabs">
-  <a href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-current="true"{% endif %}>Accounts</a>
-  <a href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-current="true"{% endif %}>Users</a>
-  <a href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-current="true"{% endif %}>Daily activity</a>
-  <a href="?days={{ days }}&tab=unmatched" {% if tab == 'unmatched' %}aria-current="true"{% endif %}>Not in tracker ({{ unmatched|length }})</a>
-</p>
 
+
+{% if tab == 'overview' %}{% include "pipeline/_usage_overview.html" %}
+{% elif tab == 'accounts' %}{% include "pipeline/_usage_accounts.html" %}
+{% elif tab == 'recordings' %}{% include "pipeline/_usage_recordings.html" %}
+{% else %}
 <section class="card usage__card">
 {% if tab == 'users' %}
   <div class="usage__scroll"><table class="rules-table">
@@ -65,15 +76,8 @@
     {% empty %}<tr><td colspan="5">Everyone is matched.</td></tr>{% endfor %}</tbody>
   </table></div>
 
-{% else %}
-  <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>Account</th><th class="num">Users</th><th class="num">Sessions</th><th class="num">Events</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th class="num">Features</th><th>Last seen</th></tr></thead>
-    <tbody>{% for m in rows %}<tr>
-      <td><a href="{% url 'pipeline:account_detail' m.account.pk %}">{{ m.account.name }}</a><br><span class="t-meta">Step {{ m.account.furthest_stage }}</span></td>
-      <td class="num">{{ m.users|length }}</td><td class="num">{{ m.sessions }}</td><td class="num">{{ m.evts }}</td><td class="num">{{ m.acts }}</td><td class="num">{{ m.ai }}</td><td class="num">{{ m.rage }}</td><td class="num">{{ m.feats }}</td><td class="nowrap">{{ m.last_seen|slice:":10" }}</td>
-    </tr>{% empty %}<tr><td colspan="9">No tracker account has usage in this window.</td></tr>{% endfor %}</tbody>
-  </table></div>
 {% endif %}
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}

@@ -1,8 +1,10 @@
 """Product usage from PostHog, joined to tracker accounts by email domain."""
 import json
 import os
+import re
 import urllib.request
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from django.core.cache import cache
 
@@ -71,7 +73,7 @@ def daily_rows(days):
     cols = ','.join("countIf(event = '%s')" % e for e in ACTION_EVENTS)
     q = """SELECT toDate(timestamp) AS day, person.properties.email AS email, countIf(event = '$pageview') AS pvs,
       %s, countIf(event IN (%s)) AS total FROM events WHERE %s GROUP BY day, email
-      ORDER BY day DESC, total DESC LIMIT 600""" % (cols, _in(ALL_EVENTS), _where(days))
+      ORDER BY day DESC, total DESC LIMIT 5000""" % (cols, _in(ALL_EVENTS), _where(days))
     return hql(q)
 
 
@@ -106,18 +108,23 @@ def tier(u):
         return 'Power'
     if u['acts'] >= 1 or (u['evts'] > 50 and u['feats'] >= 3):
         return 'Active'
-    if u['evts'] > 10:
+    if u['evts'] > 10 or u['pvs'] >= 10:
         return 'Browser'
     return 'Low'
 
 
-def join(accounts, days):
-    """Group usage by tracker account. Returns (matched rows, unmatched domains, daily by account pk)."""
-    by_domain = {}
+def by_domain_of(accounts):
+    out = {}
     for a in accounts:
         d = (a.domain or '').lower().replace('https://', '').replace('http://', '').replace('www.', '').strip('/')
         if d:
-            by_domain[d] = a
+            out[d] = a
+    return out
+
+
+def join(accounts, days):
+    """Group usage by tracker account. Returns (matched rows, unmatched domains, daily by account pk)."""
+    by_domain = by_domain_of(accounts)
     data = usage(days)
     matched, other = {}, defaultdict(lambda: {'users': 0, 'evts': 0, 'acts': 0, 'emails': []})
     email_acct = {}
@@ -148,3 +155,199 @@ def join(accounts, days):
               'evts': sum(u['evts'] for u in data['users']), 'acts': sum(u['acts'] for u in data['users']),
               'ai': sum(u['ai'] for u in data['users']), 'rage': sum(u['rage'] for u in data['users'])}
     return rows, unmatched, daily, totals
+
+
+# ---- shapes for the visual overview ----
+
+def initials(name, email):
+    words = [w for w in re.split(r'[\s._-]+', (name or '').strip()) if w]
+    if len(words) < 2:
+        words = [w for w in re.split(r'[\s._+-]+', (email or '').split('@')[0]) if w] or ['?']
+    return (words[0][0] + (words[1][0] if len(words) > 1 else '')).upper()
+
+
+def shape(rows, daily, days):
+    """Pulse series, feature totals, tier mix and per-account heat strips from the cached rows."""
+    today = datetime.now(timezone.utc).date()
+    span = [(today - timedelta(days=i)).isoformat() for i in range(days, -1, -1)]
+    pulse = {d: {'day': d, 'total': 0, 'acts': 0, 'users': set()} for d in span}
+    names = {d: (today - timedelta(days=days - i)).strftime('%b %-d') for i, d in enumerate(span)}
+    feats = [0] * len(ACTIONS)
+    per_acct = defaultdict(lambda: defaultdict(int))
+    for r in daily:
+        p = pulse.get(r['day'])
+        if not p:
+            continue
+        p['total'] += r['total'] + r['pvs']; p['acts'] += sum(r['counts']); p['users'].add(r['email'])
+        for i, c in enumerate(r['counts']):
+            feats[i] += c
+        if r['account']:
+            per_acct[r['account'].pk][r['day']] += r['total'] + r['pvs']
+    series = []
+    peak = max([p['total'] for p in pulse.values()] + [1])
+    for d in span:
+        p = pulse[d]
+        series.append({'day': d, 'label': names[d], 'total': p['total'], 'acts': p['acts'], 'users': len(p['users']),
+                       'h': round(p['total'] / peak * 100, 1), 'share': round(p['acts'] / p['total'] * 100) if p['total'] else 0})
+    users = [u for m in rows for u in m['users']]
+    feature_rows = [{'label': label, 'n': n} for (_, label), n in zip(ACTIONS, feats)]
+    feature_rows += [{'label': 'AI messages', 'n': sum(u['ai'] for u in users)},
+                     {'label': 'Company profiles read', 'n': sum(u['profiles'] for u in users)}]
+    feature_rows.sort(key=lambda f: -f['n'])
+    top = max([f['n'] for f in feature_rows] + [1])
+    for f in feature_rows:
+        f['w'] = round(f['n'] / top * 100, 1)
+    mix = [{'tier': t, 'n': sum(1 for u in users if u['tier'] == t)} for t in ('Power', 'Active', 'Browser', 'Low')]
+    cards = []
+    for m in rows:
+        v = per_acct.get(m['account'].pk, {})
+        hi = max(v.values()) if v else 1
+        strip = [{'day': d, 'label': names[d], 'n': v.get(d, 0),
+                  'lvl': 0 if not v.get(d) else 1 + min(3, int(4 * v[d] / (hi + 1)))} for d in span]
+        cards.append(dict(m, strip=strip, active_days=sum(1 for c in strip if c['n']),
+                          people=[{'ini': initials(u['name'], u['email']), 'who': u['name'] or u['email'], 'tier': u['tier']}
+                                  for u in sorted(m['users'], key=lambda u: -u['evts'])]))
+    cards.sort(key=lambda c: (-c['active_days'], -c['sessions'], c['account'].name))
+    return {'series': series, 'peak': peak, 'features': feature_rows, 'mix': mix, 'cards': cards,
+            'unused': [f['label'] for f in feature_rows if not f['n']],
+            'active_users': len({r['email'] for r in daily}), 'first': names[span[0]], 'last': names[span[-1]]}
+
+
+# ---- session recordings ----
+
+REPLAY_RETENTION_DAYS = 30
+# Page areas, read from the URLs a session visited. First match wins.
+AREAS = [
+    (r'^(login|register|signup|reset-password|update-password)', 'Signing in'),
+    (r'^biolens/products', 'Products'),
+    (r'^biolens/workspaces/[^/]+/companies', 'Workspace companies'),
+    (r'^biolens/workspaces/[^/]+/conference', 'Conferences'),
+    (r'^biolens/workspaces/[^/]+/funnel', 'Funnel'),
+    (r'^biolens/workspaces', 'Workspaces'),
+    (r'^biolens/companies', 'Company profile'),
+    (r'^biolens/all-accounts', 'All accounts'),
+    (r'^biolens/insights', 'Insights'),
+    (r'^biolens/signals', 'Signals'),
+    (r'^biolens/r-d', 'R&D'),
+    (r'^biolens/create', 'Create'),
+    (r'^biolens/team-setup', 'Team setup'),
+    (r'^biolens/admin/digests', 'Digests'),
+    (r'^biolens/notifications', 'Notifications'),
+    (r'^biolens/users', 'Users'),
+    (r'^biolens/?$', 'Home'),
+]
+# Events worth a mark on the timeline: event -> (what the person did, kind of mark)
+MOMENTS = {
+    'outreach:email_used': ('Sent an email', 'act'),
+    'decision_makers:list_downloaded': ('Downloaded a DM list', 'act'),
+    'decision_makers:added': ('Added DMs', 'act'),
+    'workspace_companies:account_status_changed': ('Changed a status', 'act'),
+    'workspace_companies:internal_score_updated': ('Scored an account', 'act'),
+    'workspace_companies:lead_assigned': ('Assigned a lead', 'act'),
+    'workspace_companies:company_added': ('Added a company', 'act'),
+    'workspace:created': ('Created a workspace', 'act'),
+    'chat:download_report_click': ('Downloaded a report', 'act'),
+    'chat:user_message_submit': ('Asked AI', 'ai'),
+    'company_profile:ask_ai_click': ('Asked AI', 'ai'),
+    'company_profile:viewed': ('Viewed a company', 'view'),
+    'company_profile:assessment_viewed': ('Read an assessment', 'view'),
+    '$rageclick': ('Rage click', 'rage'),
+    '$pageview': (None, 'nav'),
+}
+MARK_RANK = {'rage': 4, 'act': 3, 'ai': 3, 'view': 2, 'nav': 1}
+# Recording length buckets, light to deep teal as they get longer
+BUCKETS = [('blip', 'Under 30s', 30), ('short', '30s to 2 min', 120), ('mid', '2 to 10 min', 600),
+           ('long', '10 to 30 min', 1800), ('deep', '30 min +', 10 ** 9)]
+
+
+def bucket(sec):
+    for key, _, top in BUCKETS:
+        if sec < top:
+            return key
+
+
+def area_of(url):
+    path = re.sub(r'^https?://[^/]+/?', '', url or '').split('?')[0].split('#')[0].lower()
+    for pat, label in AREAS:
+        if re.match(pat, path):
+            return label
+    return None
+
+
+def replay_url(session_id):
+    return '%s/project/%s/replay/%s' % (os.environ.get('POSTHOG_HOST', 'https://us.posthog.com'),
+                                         os.environ.get('POSTHOG_PROJECT_ID', '234813'), session_id)
+
+
+def _when(s):
+    return datetime.fromisoformat(str(s).replace('Z', '+00:00'))
+
+
+def _title(moments, areas):
+    said = [m for kind in ('act', 'ai', 'view') for m in moments if m[1] == kind]
+    labels = list(dict.fromkeys(l for l, _ in said))
+    if labels:
+        return ' · '.join(labels[:2])
+    seen = [a for a in areas if a != 'Signing in']
+    if seen:
+        return 'Browsed ' + ', '.join(seen[:2])
+    return 'Sign-in only' if areas else 'Quick visit'
+
+
+def recordings(days):
+    """Cached replay sessions for the window, each with the person, the pages it visited and a timeline of marks."""
+    k = 'posthog-recordings-%d' % days
+    data = cache.get(k)
+    if data is not None:
+        return data
+    q = """SELECT s.session_id, s.start_time, s.end_time, s.active_milliseconds, s.click_count, s.keypress_count,
+      s.console_error_count, s.first_url, s.all_urls, s.retention_period_days, e.email, e.name, e.country, e.browser, e.os, e.device
+      FROM session_replay_events s LEFT JOIN (
+        SELECT properties.`$session_id` AS sid,
+          argMaxIf(person.properties.email, timestamp, person.properties.email IS NOT NULL) AS email,
+          argMaxIf(person.properties.name, timestamp, person.properties.name IS NOT NULL) AS name,
+          argMaxIf(person.properties.`$geoip_country_name`, timestamp, person.properties.`$geoip_country_name` IS NOT NULL) AS country,
+          argMaxIf(person.properties.`$browser`, timestamp, person.properties.`$browser` IS NOT NULL) AS browser,
+          argMaxIf(person.properties.`$os`, timestamp, person.properties.`$os` IS NOT NULL) AS os,
+          argMaxIf(person.properties.`$device_type`, timestamp, person.properties.`$device_type` IS NOT NULL) AS device
+        FROM events WHERE timestamp >= now() - INTERVAL %(d)d DAY GROUP BY sid) e ON s.session_id = e.sid
+      WHERE s.start_time >= now() - INTERVAL %(d)d DAY AND e.email IS NOT NULL AND e.email LIKE '%%@%%'
+        AND e.email NOT LIKE '%%@lunartree.bio'
+      ORDER BY s.start_time DESC LIMIT 1500""" % {'d': days + 1}
+    sessions = hql(q)
+    marks = defaultdict(list)
+    ev_q = """SELECT properties.`$session_id`, timestamp, event FROM events
+      WHERE timestamp >= now() - INTERVAL %d DAY AND event IN (%s) AND person.properties.email LIKE '%%@%%'
+        AND person.properties.email NOT LIKE '%%@lunartree.bio' ORDER BY timestamp LIMIT 40000""" % (days + 1, _in(MOMENTS))
+    for sid, ts, ev in hql(ev_q):
+        marks[sid].append((_when(ts), ev))
+    now = datetime.now(timezone.utc)
+    out = []
+    for sid, start, end, active_ms, clicks, keys, errors, first_url, urls, keep, email, name, country, browser, os_, device in sessions:
+        start, end = _when(start), _when(end)
+        if start + timedelta(days=keep or REPLAY_RETENTION_DAYS) < now:
+            continue  # PostHog has already deleted the footage
+        dur = max(1, int((end - start).total_seconds()))
+        buckets_at, moments = {}, []
+        for ts, ev in marks.get(sid, []):
+            label, kind = MOMENTS[ev]
+            pct = min(100.0, max(0.0, (ts - start).total_seconds() / dur * 100))
+            slot = round(pct * 2) / 2
+            if kind != 'nav' and label:
+                moments.append((label, kind))
+            if buckets_at.get(slot, ('', 0))[1] < MARK_RANK[kind]:
+                buckets_at[slot] = (kind, MARK_RANK[kind])
+        areas = list(dict.fromkeys(a for a in (area_of(u) for u in (urls or [first_url])) if a))
+        out.append({
+            'id': sid, 'url': replay_url(sid), 'email': email, 'name': name or '', 'ini': initials(name, email),
+            'country': country or '', 'browser': browser or '', 'os': os_ or '', 'device': device or '',
+            'start': start, 'dur': dur, 'active': int((active_ms or 0) / 1000), 'clicks': clicks or 0, 'keys': keys or 0,
+            'errors': errors or 0, 'areas': areas, 'pages': len(urls or []),
+            'marks': [{'at': at, 'kind': v[0]} for at, v in sorted(buckets_at.items())],
+            'did': list(dict.fromkeys(l for l, kind in moments if kind != 'rage'))[:4],
+            'rage': sum(1 for _, kind in moments if kind == 'rage'),
+            'title': _title(moments, areas), 'bucket': bucket(dur),
+            'live': min(100, round(((active_ms or 0) / 1000) / dur * 100)),
+        })
+    cache.set(k, out, 300)
+    return out

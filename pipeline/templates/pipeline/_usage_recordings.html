@@ -1,0 +1,59 @@
+{% load static pipeline_extras %}
+<section class="recs" data-recs>
+  <div class="recs__top">
+    <div>
+      <h2 class="t-h3">Session recordings</h2>
+      <p class="t-meta">{{ recs|length }} recording{{ recs|length|pluralize }} from client users, {{ rec_active|spent }} of active time. Each tile draws what happened along the session: tall marks are actions, medium are profile views, short are page loads, and an orange dot is a rage click. Click to watch in PostHog, which keeps recordings for 30 days.</p>
+    </div>
+    <label class="recs__sort t-meta">Sort
+      <select class="field__input field__input--plain field__select" data-rec-sort aria-label="Sort recordings">
+        <option value="new">Newest</option><option value="long">Longest</option><option value="active">Most active</option><option value="busy">Most clicks</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="recs__rail" aria-label="Playlists by account">
+    <div class="chips chips--scroll">
+      <button type="button" class="chip" data-rec-acct="" aria-pressed="true">All recordings <span class="chip__count">{{ recs|length }}</span></button>
+      {% for p in playlists %}<button type="button" class="chip" data-rec-acct="{{ p.key }}" aria-pressed="false" title="{{ p.active|spent }} active">
+        <span class="chip__av">{{ p.name|slice:":1" }}</span>{{ p.name }} <span class="chip__count">{{ p.n }}</span></button>{% endfor %}
+    </div>
+  </div>
+
+  <div class="recs__len" role="group" aria-label="Filter by length">
+    <span class="recs__lenlabel t-meta">Length</span>
+    {% for b in buckets %}<button type="button" class="lenchip lenchip--{{ b.key }}" data-rec-len="{{ b.key }}" aria-pressed="true"{% if not b.n %} disabled{% endif %}>
+      <i class="lenchip__sw"></i>{{ b.label }} <span class="chip__count">{{ b.n }}</span></button>{% endfor %}
+    <span class="recs__count t-meta mono" data-rec-count aria-live="polite"></span>
+  </div>
+
+  <div class="recs__grid" data-rec-grid>
+    {% for r in recs %}
+    <article class="rec" data-acct="{{ r.key }}" data-len="{{ r.bucket }}" data-ts="{{ r.start|date:'U' }}" data-dur="{{ r.dur }}" data-active="{{ r.active }}" data-clicks="{{ r.clicks }}">
+      <a class="rec__thumb rec__thumb--{{ r.bucket }}" href="{{ r.url }}" target="_blank" rel="noopener" aria-label="Watch: {{ r.title }}, {{ r.name|default:r.email }}, {{ r.dur|clock }}">
+        <span class="rec__brand" aria-hidden="true">{{ r.brand }}</span>
+        <span class="rec__marks" aria-hidden="true">{% for m in r.marks %}<i class="mk mk--{{ m.kind }}" style="left: {{ m.at }}%"></i>{% endfor %}</span>
+        <span class="rec__play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+        {% if r.rage or r.errors %}<span class="rec__flag"><span class="tag tag--mark">{% if r.rage %}{{ r.rage }} rage click{{ r.rage|pluralize }}{% else %}{{ r.errors }} console error{{ r.errors|pluralize }}{% endif %}</span></span>{% endif %}
+        <span class="rec__len mono">{{ r.dur|clock }}</span>
+        <span class="rec__live" aria-hidden="true"><i style="width: {{ r.live }}%"></i></span>
+      </a>
+      <div class="rec__body">
+        <span class="avatar avatar--sm" title="{{ r.email }}{% if r.country %} · {{ r.country }}{% endif %}{% if r.browser %} · {{ r.browser }}{% endif %}{% if r.os %} on {{ r.os }}{% endif %}">{{ r.ini }}</span>
+        <div class="rec__text">
+          <h3 class="rec__title"><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a></h3>
+          <p class="rec__who clamp-1" title="{{ r.email }}">{{ r.name|default:r.email }}</p>
+          <p class="rec__meta mono">{{ r.start|ago }} · {{ r.active|spent }} active · {{ r.clicks }} click{{ r.clicks|pluralize }}</p>
+          <div class="tags rec__tags">
+            {% if r.account %}<a class="tag tag--type" href="{% url 'pipeline:account_detail' r.account.pk %}">{{ r.account.name }}</a>{% else %}<span class="tag tag--outline">Not in tracker</span>{% endif %}
+            {% for d in r.did|slice:":2" %}<span class="tag tag--outline">{{ d }}</span>{% endfor %}
+            {% if not r.did %}{% for a in r.areas|slice:":2" %}<span class="tag tag--outline">{{ a }}</span>{% endfor %}{% endif %}
+          </div>
+        </div>
+      </div>
+    </article>
+    {% empty %}<p class="card t-body recs__none">No client recordings in this window. PostHog only keeps recordings for 30 days.</p>{% endfor %}
+  </div>
+  <p class="card t-body recs__none" data-rec-none hidden>Nothing matches those filters.</p>
+</section>
+<script src="{% static 'js/usage.js' %}" defer></script>

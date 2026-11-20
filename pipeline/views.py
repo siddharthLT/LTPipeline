@@ -387,22 +387,50 @@ def usage(request):
     except ValueError:
         days = 30
     days = days if days in (7, 14, 30, 90) else 30
-    tab = request.GET.get('tab', 'accounts')
+    tab = request.GET.get('tab', 'overview')
+    tab = tab if tab in ('overview', 'accounts', 'recordings', 'users', 'daily', 'unmatched') else 'overview'
     if request.GET.get('refresh'):
         from django.core.cache import cache
         cache.delete('posthog-usage-%d' % days)
+        cache.delete('posthog-recordings-%d' % days)
+    accounts = list(Account.objects.prefetch_related('stage_progress'))
     ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': list(zip(posthog.SHORT, [l for _, l in posthog.ACTIONS])),
            'windows': (7, 14, 30, 90)}
     try:
-        rows, unmatched, daily, totals = posthog.join(list(Account.objects.all()), days)
+        rows, unmatched, daily, totals = posthog.join(accounts, days)
         by_day = {}
         for d in daily:
             by_day.setdefault(d['day'], []).append(d)
+        using = {m['account'].pk for m in rows}
         ctx.update(rows=rows, unmatched=unmatched, days_list=sorted(by_day.items(), reverse=True), totals=totals,
                    users=[dict(u, account=m['account']) for m in rows for u in m['users']],
-                   tracked=Account.objects.count(), with_usage=len(rows))
+                   tracked=len(accounts), with_usage=len(rows),
+                   quiet=sorted((a for a in accounts if a.pk not in using), key=lambda a: (-a.furthest_stage, a.name)))
+        if tab in ('overview', 'accounts'):
+            ctx['shape'] = posthog.shape(rows, daily, days)
+        if tab == 'recordings':
+            ctx.update(_recordings_context(accounts, days))
     except posthog.NotConfigured as e:
         ctx['error'] = str(e)
     except Exception as e:  # network or PostHog errors should not break the page
         ctx['error'] = 'PostHog did not answer: %s' % e
     return render(request, 'pipeline/usage.html', ctx)
+
+
+def _recordings_context(accounts, days):
+    """Recordings grouped into account playlists, with length buckets for the filter chips."""
+    from . import posthog
+    by_domain = posthog.by_domain_of(accounts)
+    recs = posthog.recordings(days)
+    lists = {}
+    for r in recs:
+        a = posthog.match_account(r['email'], by_domain)
+        r['account'] = a
+        r['key'] = str(a.pk) if a else 'x'
+        r['brand'] = a.name if a else posthog.domain_of(r['email'])
+        p = lists.setdefault(r['key'], {'key': r['key'], 'name': a.name if a else 'Not in tracker', 'account': a,
+                                        'n': 0, 'active': 0, 'dur': 0})
+        p['n'] += 1; p['active'] += r['active']; p['dur'] += r['dur']
+    playlists = sorted(lists.values(), key=lambda p: (p['key'] == 'x', -p['n']))
+    buckets = [{'key': k, 'label': label, 'n': sum(1 for r in recs if r['bucket'] == k)} for k, label, _ in posthog.BUCKETS]
+    return {'recs': recs, 'playlists': playlists, 'buckets': buckets, 'rec_active': sum(r['active'] for r in recs)}
