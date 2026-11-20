@@ -207,6 +207,22 @@ def toggle_action(request, pk, item_id):
 
 
 @login_required
+def actions(request):
+    show = request.GET.get('show', 'open')
+    if show not in ('open', 'done', 'all'):
+        show = 'open'
+    tasks = Task.objects.select_related('account')
+    if show == 'open':
+        tasks = tasks.filter(done=False)
+    elif show == 'done':
+        tasks = tasks.filter(done=True)
+    counts = {'open': Task.objects.filter(done=False).count(), 'done': Task.objects.filter(done=True).count()}
+    counts['all'] = counts['open'] + counts['done']
+    return render(request, 'pipeline/actions.html', {
+        'tasks': tasks, 'show': show, 'counts': counts, 'today': datetime.date.today(), 'nav': 'actions'})
+
+
+@login_required
 def playbook(request):
     return render(request, 'pipeline/playbook.html', {'stages': UsageStage.objects.all(), 'nav': 'playbook'})
 

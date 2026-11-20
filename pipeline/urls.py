@@ -7,6 +7,7 @@ app_name = 'pipeline'
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('search.json', views.search_index, name='search'),
+    path('actions/', views.actions, name='actions'),
     path('rules/', views.rules, name='rules'),
     path('usage/', views.usage, name='usage'),
     path('health-check/', views.health_check, name='health_check'),
