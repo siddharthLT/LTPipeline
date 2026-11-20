@@ -176,29 +176,16 @@ body:has(.deck-empty) { overflow: auto; }
 .print-cont { display: none; }
 .thesis { display: grid; gap: 14px; }
 
+/* PDF: one page per slide, the page as tall as the slide's content. deck.js writes the per-slide @page sizes. */
 @media print {
-  @page { size: 1280px 720px; margin: 0; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html, body { height: auto; }
   body { background: #fff; overflow: visible; }
   .deck { display: block; height: auto; }
   .deck__bar, .deck__nav, .ed { display: none !important; }
   .deck__stage { overflow: visible; position: static; }
-  .deck__canvas { position: static; transform: none; width: 1641px; height: auto; zoom: 0.78; }
-  .slide { position: relative; display: block; width: 1641px; height: auto; min-height: 0; overflow: visible; opacity: 1; visibility: visible;
-           box-shadow: none; border-radius: 0; padding: 30px 52px 0; break-after: page; }
+  .deck__canvas { position: static; transform: none; width: 1280px; height: auto; }
+  .slide { position: relative; inset: auto; width: 1280px; height: auto; min-height: 0; overflow: visible; opacity: 1; visibility: visible;
+           box-shadow: none; border-radius: 0; break-after: page; break-inside: avoid; }
   .slide:last-child { break-after: auto; }
-  .slide > * + * { margin-top: 14px; }
-  /* long slides flow onto a second page between blocks, never through the middle of one */
-  .kpi, .jn-card, .way__g, .feed__i, .ov__row, .acts tr, .chk__i, .prob, .trio, .jn { break-inside: avoid; }
-  .pane__head { break-after: avoid; }
-  .cols, .cols--next { display: block; break-inside: auto; }
-  .cols > .pane + .pane { margin-top: 14px; }
-  .cols:not(.cols--next) { display: flex; flex-direction: column; }
-  .cols:not(.cols--next) > .pane:last-child { order: -1; margin: 0 0 14px; }  /* short checklist first, the long list flows after it */
-  .pane--stage { break-inside: avoid; }
-  .ov { display: block; }
-  .ov__row { padding: 8px 8px; }
-  .thesis { break-before: page; }
-  .print-cont { display: block; margin-bottom: 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-deep); }
 }

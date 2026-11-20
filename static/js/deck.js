@@ -50,6 +50,20 @@
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(slides.length - 1);
   });
+  // PDF: each slide prints on a page as tall as its content (1280px wide), not squeezed into a fixed 16:9 page
+  var pageStyle = document.createElement('style');
+  document.head.appendChild(pageStyle);
+  function pageSizes() {
+    var css = '';
+    slides.forEach(function (s, k) {
+      var h = Math.max(720, Math.ceil(s.scrollHeight) + 2);
+      s.setAttribute('data-page', 'p' + k);
+      css += '@page p' + k + ' { size: 1280px ' + h + 'px; margin: 0; }\n.slide[data-page="p' + k + '"] { page: p' + k + '; }\n';
+    });
+    pageStyle.textContent = css;
+  }
+  window.addEventListener('beforeprint', pageSizes);
   window.addEventListener('resize', scale);
-  scale(); show(i);
+  scale(); show(i); pageSizes();
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(pageSizes);
 })();
