@@ -23,8 +23,8 @@ body { background: #E9EEEE; overflow: hidden; }
 .deck__hint { font-size: var(--fs-label); color: var(--ink-2); }
 
 /* slide frame */
-.slide { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 18px; padding: 36px 52px 34px; background: var(--canvas); border-radius: 16px; box-shadow: 0 24px 60px rgba(3, 95, 98, 0.14), 0 0 0 1px var(--line); opacity: 0; pointer-events: none; transition: opacity 180ms ease; overflow: hidden; }
-.slide.is-active { opacity: 1; pointer-events: auto; }
+.slide { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 18px; padding: 36px 52px 34px; background: var(--canvas); border-radius: 16px; box-shadow: 0 24px 60px rgba(3, 95, 98, 0.14), 0 0 0 1px var(--line); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms ease, visibility 0s linear 180ms; overflow: hidden; }
+.slide.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 .slide__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-6); }
 .slide__id { display: grid; gap: 2px; min-width: 0; }
 .slide__name { margin: 4px 0 0; font-size: 42px; line-height: 48px; font-weight: 600; letter-spacing: -0.025em; }
@@ -52,6 +52,7 @@ body:not(.is-editing) .deck [data-edit-url], body:not(.is-editing) .deck [data-t
 .is-editing .jn__btn:hover .jn__dot { box-shadow: 0 0 0 4px var(--teal-50), 0 0 0 5px var(--teal); }
 
 /* overview */
+.slide__part { font-size: 20px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); margin-left: 8px; }
 .ov { display: grid; gap: 0; align-content: start; flex: 1; min-height: 0; overflow: hidden; }
 .ov__row { display: grid; grid-template-columns: 210px 244px 130px 150px minmax(0, 1fr); gap: 22px; align-items: center; padding: 12px 8px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; font: inherit; color: inherit; }
 button.ov__row { cursor: pointer; }
@@ -147,5 +148,5 @@ body:has(.deck-empty) { overflow: auto; }
   .deck__bar, .deck__nav, .ed { display: none; }
   .deck__stage { overflow: visible; }
   .deck__canvas { position: static; transform: none; width: 1280px; height: auto; }
-  .slide { position: relative; width: 1280px; height: 720px; opacity: 1; box-shadow: none; border-radius: 0; break-after: page; }
+  .slide { position: relative; width: 1280px; height: 720px; opacity: 1; visibility: visible; box-shadow: none; border-radius: 0; break-after: page; }
 }

@@ -248,9 +248,12 @@ def hand_raisers(request):
     ids = [int(i) for i in request.GET.get('ids', '').split(',') if i.strip().isdigit()]
     by_id = {a.pk: a for a in Account.objects.filter(pk__in=ids).prefetch_related('stage_progress', 'tasks', 'events')}
     accounts = [by_id[i] for i in dict.fromkeys(ids) if i in by_id]
-    overview = len(accounts) > 1
+    # Overview rows per slide: at most 6, split evenly (10 accounts -> 5 + 5)
+    pages = -(-len(accounts) // 6) if len(accounts) > 1 else 0
+    per = -(-len(accounts) // pages) if pages else 0
+    overview = [accounts[i:i + per] for i in range(0, len(accounts), per)] if pages else []
     for n, a in enumerate(accounts):
-        a.slide_no = (1 if overview else 0) + 2 * n + 1
+        a.slide_no = pages + 2 * n + 1
         furthest = a.furthest_stage
         a.rows = a.stage_rows()
         for r in a.rows:

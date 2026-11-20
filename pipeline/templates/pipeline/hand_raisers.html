@@ -22,18 +22,18 @@
   <main class="deck__stage" data-stage>
     <div class="deck__canvas" data-canvas>
 
-      {% if overview %}
-      <section class="slide slide--overview" data-slide aria-label="All deals">
+      {% for page in overview %}
+      <section class="slide slide--overview" data-slide aria-label="All deals, part {{ forloop.counter }}">
         <div class="slide__head">
           <div class="slide__id">
             <span class="eyebrow">Hand raisers</span>
-            <h1 class="slide__name">How these deals are moving</h1>
+            <h1 class="slide__name">How these deals are moving{% if overview|length > 1 %} <span class="slide__part">{{ forloop.counter }} of {{ overview|length }}</span>{% endif %}</h1>
           </div>
           <span class="slide__legend"><i class="lg lg--done"></i>Done <i class="lg lg--part"></i>Part met <i class="lg lg--open"></i>Not yet</span>
         </div>
         <div class="ov">
           <div class="ov__row ov__row--head"><span>Company</span><span>Journey, 12 steps</span><span class="ov__c">Probability</span><span>Last activity</span><span>Next dated action</span></div>
-          {% for a in accounts %}
+          {% for a in page %}
           <button type="button" class="ov__row" data-goto="{{ a.slide_no }}">
             <span class="ov__co"><strong>{{ a.name }}</strong><span class="mono">{{ a.furthest_stage_name }}</span></span>
             <span class="ov__strip" aria-hidden="true">{% for r in a.rows %}<i class="ov__cell ov__cell--{{ r.state }}{% if r.current %} is-current{% endif %}"></i>{% endfor %}</span>
@@ -44,7 +44,7 @@
           {% endfor %}
         </div>
       </section>
-      {% endif %}
+      {% endfor %}
 
       {% for a in accounts %}
       {# ---------- Slide A: where the deal stands and how it has moved ---------- #}
