@@ -14,6 +14,10 @@
 </head>
 <body>
 {% block body %}{% endblock %}
+<div class="loader" data-loader role="status" aria-live="polite" hidden>
+  <img class="loader__mark" src="{% static 'img/mark.svg' %}" alt="" width="56" height="56">
+  <span class="sr-only">Loading</span>
+</div>
 <script src="{% static 'js/app.js' %}" defer></script>
 </body>
 </html>

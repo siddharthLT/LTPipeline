@@ -607,3 +607,17 @@ button.row:hover, a.row:hover { background: #FAFBFB; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
   .spinner { animation: spin 1.6s linear infinite !important; }
 }
+/* ------------------------------------------------------------- loader -- */
+/* Lunartree mark shown over the page while the next one loads */
+.loader {
+  position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.9); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity var(--d-3) var(--ease);
+}
+.loader.is-on { opacity: 1; }
+.loader__mark { width: 56px; height: 56px; animation: loader-breathe 1.4s var(--ease) infinite; filter: drop-shadow(0 10px 18px rgba(3, 95, 98, 0.22)); }
+@keyframes loader-breathe {
+  0%, 100% { transform: scale(0.88) rotate(-6deg); opacity: 0.75; }
+  50% { transform: scale(1.08) rotate(6deg); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .loader__mark { animation: none; } .loader { transition: none; } }

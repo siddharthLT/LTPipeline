@@ -788,7 +788,7 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .recs__none { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) { .rec__thumb, .rec__play, .ucard { transition: none; } .rec__thumb:hover { transform: none; } }
 .recs__sort select { width: auto; min-width: 150px; min-height: var(--control-sm); }
-.rec__brand { position: absolute; left: 12px; max-width: 58%; top: 10px; font-size: 22px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; color: color-mix(in srgb, var(--fg) 40%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec__brand { position: absolute; left: 12px; max-width: 58%; top: 10px; font-size: 22px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; color: #fff; text-shadow: 0 1px 6px rgba(3, 95, 98, 0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feat__none { margin: var(--s-3) 0 0; }
 .usage__bar { min-width: 0; }
 .usage__bar .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }

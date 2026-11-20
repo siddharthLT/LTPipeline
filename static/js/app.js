@@ -354,3 +354,39 @@ document.addEventListener('click', function (e) {
   }
   window.addEventListener('load', fitAll);
 })();
+
+// Page loader: the Lunartree mark over the page while a slow navigation or form post is in flight.
+(function () {
+  var el = document.querySelector('[data-loader]');
+  if (!el) return;
+  var timer, failsafe;
+  function show() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {  // quick pages never flash it
+      el.hidden = false;
+      requestAnimationFrame(function () { el.classList.add('is-on'); });
+      failsafe = setTimeout(hide, 30000);  // downloads and cancelled loads never leave it stuck
+    }, 200);
+  }
+  function hide() {
+    clearTimeout(timer); clearTimeout(failsafe);
+    el.classList.remove('is-on'); el.hidden = true;
+  }
+  window.addEventListener('pageshow', hide);  // also covers back/forward cache restores
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest('a[href]');
+    if (!a || a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-edit-url')) return;
+    var u;
+    try { u = new URL(a.href, location.href); } catch (err) { return; }
+    if (u.origin !== location.origin || !/^https?:$/.test(u.protocol)) return;
+    if (u.pathname === location.pathname && u.search === location.search) return;  // same page or a #hash
+    if (/\.(pdf|json|csv|xlsx?)$/i.test(u.pathname)) return;
+    show();
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (e.defaultPrevented || f.target === '_blank' || f.hasAttribute('data-edit-url')) return;
+    show();
+  });
+})();
