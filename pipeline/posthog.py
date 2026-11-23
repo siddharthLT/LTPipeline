@@ -6,6 +6,7 @@ import time
 import urllib.error
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from django.core.cache import cache
@@ -66,6 +67,13 @@ def hql(query, pid):
         time.sleep(1.5 * (attempt + 1))
 
 
+def hql_all(query):
+    """The query on every project at once, as [(pid, rows)]; the projects answer in parallel instead of one after the other."""
+    pids = project_ids()
+    with ThreadPoolExecutor(len(pids) or 1) as ex:
+        return list(zip(pids, ex.map(lambda pid: hql(query, pid), pids)))
+
+
 def _where(days):
     return ("timestamp >= now() - INTERVAL %d DAY AND person.properties.email IS NOT NULL "
             "AND person.properties.email LIKE '%%@%%' AND person.properties.email NOT LIKE '%%@lunartree.bio'" % days)
@@ -82,8 +90,8 @@ def user_rows(days):
         'all': _in(ALL_EVENTS), 'act': _in(ACTION_EVENTS), 'ai': _in(AI_EVENTS), 'w': _where(days)}
     keys = ['email', 'name', 'evts', 'sessions', 'acts', 'ai', 'rage', 'pvs', 'feats', 'last_seen', 'profiles']
     merged = {}
-    for pid in project_ids():
-        for u in (dict(zip(keys, r)) for r in hql(q, pid)):
+    for _, rows in hql_all(q):
+        for u in (dict(zip(keys, r)) for r in rows):
             m = merged.get(u['email'])  # the same person can appear in more than one project
             if not m:
                 merged[u['email']] = u
@@ -103,8 +111,8 @@ def daily_rows(days):
       %s, countIf(event IN (%s)) AS total FROM events WHERE %s GROUP BY day, email
       ORDER BY day DESC, total DESC LIMIT 5000""" % (cols, _in(ALL_EVENTS), _where(days))
     merged = {}
-    for pid in project_ids():
-        for r in hql(q, pid):
+    for _, rows in hql_all(q):
+        for r in rows:
             m = merged.get((str(r[0]), r[1]))
             if not m:
                 merged[(str(r[0]), r[1])] = list(r)
@@ -119,7 +127,9 @@ def usage(days):
     k = 'posthog-usage-%d' % days
     data = cache.get(k)
     if data is None:
-        data = {'users': user_rows(days), 'daily': daily_rows(days)}
+        with ThreadPoolExecutor(2) as ex:
+            u, d = ex.submit(user_rows, days), ex.submit(daily_rows, days)
+            data = {'users': u.result(), 'daily': d.result()}
         cache.set(k, data, 300)
     return data
 
@@ -264,8 +274,8 @@ def live(accounts):
           FROM events WHERE %s GROUP BY person.properties.email LIMIT 200""" % _where(0).replace(
             'timestamp >= now() - INTERVAL 0 DAY', 'timestamp >= now() - INTERVAL %d MINUTE' % LIVE_MINUTES)
         merged = {}
-        for pid in project_ids():
-            for email, name, last, url, sid in hql(q, pid):
+        for pid, rows in hql_all(q):
+            for email, name, last, url, sid in rows:
                 email = email.lower()
                 if email not in merged or str(last) > str(merged[email]['last']):
                     merged[email] = {'email': email, 'name': name or '', 'last': last, 'area': area_of(url) or 'BioLens',
@@ -383,14 +393,16 @@ def recordings(days):
       WHERE s.start_time >= now() - INTERVAL %(d)d DAY AND e.email IS NOT NULL AND e.email LIKE '%%@%%'
         AND e.email NOT LIKE '%%@lunartree.bio'
       ORDER BY s.start_time DESC LIMIT 1500""" % {'d': days + 1}
-    sessions = [(pid,) + tuple(r) for pid in project_ids() for r in hql(q, pid)]
     marks = defaultdict(list)
     ev_q = """SELECT properties.`$session_id`, timestamp, event FROM events
       WHERE timestamp >= now() - INTERVAL %d DAY AND event IN (%s) AND person.properties.email LIKE '%%@%%'
         AND person.properties.email NOT LIKE '%%@lunartree.bio' ORDER BY timestamp LIMIT 40000""" % (days + 1, _in(MOMENTS))
-    for pid in project_ids():
-        for sid, ts, ev in hql(ev_q, pid):
-            marks[sid].append((_when(ts), ev))
+    with ThreadPoolExecutor(2) as ex:  # sessions and their marks load side by side
+        got_sessions, got_marks = ex.submit(hql_all, q), ex.submit(hql_all, ev_q)
+        sessions = [(pid,) + tuple(r) for pid, rows in got_sessions.result() for r in rows]
+        for _, rows in got_marks.result():
+            for sid, ts, ev in rows:
+                marks[sid].append((_when(ts), ev))
     now = datetime.now(timezone.utc)
     out = []
     for pid, sid, start, end, active_ms, clicks, keys, errors, first_url, urls, keep, email, name, country, browser, os_, device in sessions:

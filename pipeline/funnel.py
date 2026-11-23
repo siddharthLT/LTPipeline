@@ -1,5 +1,6 @@
 """Action funnel and journey Sankey from PostHog: how far client users get in BioLens, across app-prod and Neuland."""
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 from django.core.cache import cache
 
@@ -36,17 +37,20 @@ def _users(days):
     where = posthog._where(days)
     events = posthog._in(list(EVENT_STEP))
     out = defaultdict(dict)
-    for pid in posthog.project_ids():
-        for email, ev, ts in posthog.hql(
-                "SELECT person.properties.email, event, min(timestamp) FROM events WHERE %s AND event IN (%s) "
-                "GROUP BY person.properties.email, event LIMIT 20000" % (where, events), pid):
-            step = EVENT_STEP[ev]
-            seen = out[(pid, email.lower())]
-            seen[step] = min(seen[step], ts) if step in seen else ts
-        for email, ts in posthog.hql(
-                "SELECT person.properties.email, min(timestamp) FROM events WHERE %s AND event = '$pageview' "
-                "GROUP BY person.properties.email LIMIT 20000" % where, pid):
-            out[(pid, email.lower())].setdefault('visit', ts)
+    q_events = ("SELECT person.properties.email, event, min(timestamp) FROM events WHERE %s AND event IN (%s) "
+                "GROUP BY person.properties.email, event LIMIT 20000" % (where, events))
+    q_views = ("SELECT person.properties.email, min(timestamp) FROM events WHERE %s AND event = '$pageview' "
+               "GROUP BY person.properties.email LIMIT 20000" % where)
+    with ThreadPoolExecutor(2) as ex:  # both queries, on every project, at once
+        got_events, got_views = ex.submit(posthog.hql_all, q_events), ex.submit(posthog.hql_all, q_views)
+        for pid, rows in got_events.result():
+            for email, ev, ts in rows:
+                step = EVENT_STEP[ev]
+                seen = out[(pid, email.lower())]
+                seen[step] = min(seen[step], ts) if step in seen else ts
+        for pid, rows in got_views.result():
+            for email, ts in rows:
+                out[(pid, email.lower())].setdefault('visit', ts)
     for seen in out.values():  # anyone with a tracked event has opened the app, even without a page view
         seen.setdefault('visit', min(seen.values()))
     return {k: v for k, v in out.items()}
