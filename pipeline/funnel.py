@@ -89,7 +89,8 @@ def build(accounts, days):
                      'lost': prev - n if i else 0, 'stopped': len(who),
                      'who': [{'email': p['email'], 'name': p['account'].name if p['account'] else '', 'pid': p['pid'],
                               'project': PROJECTS.get(p['pid'], str(p['pid']))} for p in who[:10]], 'more': max(len(who) - 10, 0)})
-    return {'total': total, 'rows': rows, 'sankey': sankey([p['path'] for p in people]) if total else None,
+    top_paths = Counter(' > '.join(LABEL[s] for s in p['path']) for p in people).most_common(8)
+    return {'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
             'by_project': dict(Counter(PROJECTS.get(p['pid'], str(p['pid'])) for p in people))}
 
 

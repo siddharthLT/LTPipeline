@@ -25,6 +25,8 @@
   <a class="btn btn--sm" href="?days={{ days }}&tab={{ tab }}&refresh=1">Refresh</a>
 </div>
 
+{% include "pipeline/_usage_insights.html" %}
+
 {% if error %}
 <section class="card"><p class="t-body"><strong>Could not load usage.</strong> {{ error }}</p></section>
 {% else %}

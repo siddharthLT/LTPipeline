@@ -448,3 +448,67 @@ document.querySelectorAll('[data-autosubmit]').forEach(function (form) {
   });
   input.addEventListener('blur', function () { setTimeout(close, 120); });
 })();
+
+
+// Product usage: generate a new AI summary for the current tab and stream it into the panel (no page reload)
+document.querySelectorAll('[data-insights]').forEach(function (box) {
+  var btn = box.querySelector('[data-insights-go]'), err = box.querySelector('[data-insights-err]'), loading = box.querySelector('[data-insights-loading]');
+  var body = box.querySelector('[data-insights-body]'), meta = box.querySelector('[data-insights-meta]');
+  var SECTIONS = [['highlights', 'Key highlights', ' ins__box--hi'], ['insights', 'General insights', ''], ['outliers', 'Outliers', ''], ['risks', 'Risks', ' ins__box--risk']];
+  var HEADS = { HEADLINE: 'headline', HIGHLIGHTS: 'highlights', INSIGHTS: 'insights', OUTLIERS: 'outliers', RISKS: 'risks' };
+
+  function parse(text) {
+    var out = { headline: '', highlights: [], insights: [], outliers: [], risks: [] }, section = null;
+    text.split('\n').forEach(function (line) {
+      var s = line.trim(), i = s.indexOf(':'), word = i > -1 ? s.slice(0, i).replace(/^[*# ]+|[*# ]+$/g, '').toUpperCase() : '';
+      if (i > -1 && HEADS[word]) { section = HEADS[word]; if (section === 'headline') out.headline = s.slice(i + 1).trim(); return; }
+      if (!s || !section) return;
+      if (section === 'headline') { out.headline = (out.headline + ' ' + s).trim(); return; }
+      var list = out[section];
+      if (/^[-*•]/.test(s) || !list.length) list.push(s.replace(/^[-*•\s]+/, '')); else list[list.length - 1] += ' ' + s;
+    });
+    return out;
+  }
+  function render(c) {
+    body.textContent = '';
+    if (c.headline) { var h = document.createElement('p'); h.className = 'ins__headline'; h.textContent = c.headline; body.appendChild(h); }
+    var grid = document.createElement('div'); grid.className = 'ins__grid';
+    SECTIONS.forEach(function (sec) {
+      if (!c[sec[0]].length) return;
+      var d = document.createElement('div'); d.className = 'ins__box' + sec[2];
+      var t = document.createElement('h3'); t.textContent = sec[1]; d.appendChild(t);
+      var ul = document.createElement('ul');
+      c[sec[0]].forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+      d.appendChild(ul); grid.appendChild(d);
+    });
+    body.appendChild(grid);
+  }
+  function fail(msg) { err.textContent = msg; err.hidden = false; }
+
+  btn.addEventListener('click', function () {
+    var label = btn.querySelector('span'), original = label.textContent, text = '', buf = '', started = false;
+    btn.setAttribute('aria-busy', 'true'); label.textContent = 'Generating…'; err.hidden = true; loading.hidden = false;
+    var form = new URLSearchParams({ tab: box.dataset.tab, days: box.dataset.days, csrfmiddlewaretoken: box.querySelector('[name=csrfmiddlewaretoken]').value });
+    function handle(ev) {
+      if (ev.t === 'reset') { text = ''; started = false; loading.hidden = false; body.textContent = ''; }
+      else if (ev.t === 'delta') { text += ev.v; if (!started) { started = true; loading.hidden = true; body.textContent = ''; } render(parse(text)); }
+      else if (ev.t === 'done') { render(ev.content); meta.textContent = 'Generated just now by you for the last ' + box.dataset.days + ' days. Everyone sees this one until someone generates a new one.'; }
+      else if (ev.t === 'error') fail(ev.v);
+    }
+    fetch(box.dataset.url, { method: 'POST', body: form, credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok || !r.body) return r.json().then(function (j) { fail(j.error || 'Something went wrong.'); }).catch(function () { fail('Something went wrong.'); });
+      var reader = r.body.getReader(), dec = new TextDecoder();
+      return (function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) return;
+          buf += dec.decode(res.value, { stream: true });
+          var lines = buf.split('\n'); buf = lines.pop();
+          lines.forEach(function (l) { if (l.trim()) handle(JSON.parse(l)); });
+          return pump();
+        });
+      })();
+    }).catch(function () { fail('Could not reach the server.'); }).finally(function () {
+      btn.removeAttribute('aria-busy'); label.textContent = original; loading.hidden = true;
+    });
+  });
+});

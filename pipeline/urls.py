@@ -11,6 +11,7 @@ urlpatterns = [
     path('actions/', views.actions, name='actions'),
     path('rules/', views.rules, name='rules'),
     path('usage/', views.usage, name='usage'),
+    path('usage/insights/', views.usage_insights, name='usage_insights'),
     path('mapped-universe/', views.mapped_universe, name='mapped_universe'),
     path('mapped-universe/suggest/', views.mapped_suggest, name='mapped_suggest'),
     path('health-check/', views.health_check, name='health_check'),

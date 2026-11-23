@@ -554,3 +554,53 @@ class FunnelTests(TestCase):
             self.assertEqual(f['rows'][0]['stopped'], 1)
             self.assertTrue(f['sankey']['links'])
             self.assertEqual(f['total'], 3)
+
+
+class UsageInsightTests(Base):
+    def stream(self, tab='funnel', content=None, days=30, **kw):
+        import json
+        from unittest import mock
+        from . import insights
+        content = content or {'headline': 'h', 'highlights': ['a'], 'insights': ['b'], 'outliers': [], 'risks': ['c']}
+        evs = [{'t': 'delta', 'v': 'HEADLINE: h'}, {'t': 'done', 'content': content, 'provider': 'OpenAI'}]
+        with mock.patch.object(insights, 'generate_stream', return_value=iter(evs)):
+            r = self.client.post(reverse('pipeline:usage_insights'), dict({'tab': tab, 'days': days}, **kw))
+            body = b''.join(r.streaming_content).decode() if r.streaming else ''  # the stream is lazy, so read it while patched
+        return r, [json.loads(l) for l in body.splitlines()]
+
+    def test_generate_streams_and_is_shared_and_replaced(self):
+        from .models import UsageInsight
+        r, evs = self.stream()
+        self.assertEqual([e['t'] for e in evs], ['delta', 'done'])
+        self.assertEqual(UsageInsight.objects.get(tab='funnel', days=30).generated_by, 'a@b.co')
+        self.stream(content={'headline': 'second', 'highlights': ['a'], 'insights': [], 'outliers': [], 'risks': []})
+        self.assertEqual(UsageInsight.objects.filter(tab='funnel', days=30).count(), 1)
+        self.assertEqual(UsageInsight.objects.get(tab='funnel', days=30).content['headline'], 'second')
+        self.assertContains(self.client.get(reverse('pipeline:usage') + '?tab=funnel'), 'second')
+
+    def test_bad_tab_and_method(self):
+        r, _ = self.stream(tab='nope')
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.client.get(reverse('pipeline:usage_insights')).status_code, 405)
+        self.client.logout()
+        self.assertEqual(self.client.post(reverse('pipeline:usage_insights'), {'tab': 'funnel'}).status_code, 302)
+
+    def test_parse_and_fallback_to_groq(self):
+        import os
+        from unittest import mock
+        from . import insights
+        self.assertEqual(insights.parse('HEADLINE: x\nHIGHLIGHTS:\n- one\n  more\nRISKS:\n- r')['highlights'], ['one more'])
+        good = 'HEADLINE: ok\nHIGHLIGHTS:\n- a\nINSIGHTS:\n- b'
+        calls = []
+
+        def fake(url, key, model, system, data):
+            calls.append(url)
+            if 'openai.com' in url:
+                raise RuntimeError('answered 429')
+            yield good
+        env = {'OPENAI_KEY': 'o', 'GROQ_KEY': 'g'}
+        with mock.patch.dict(os.environ, env), mock.patch.object(insights, '_stream', fake), mock.patch.object(insights, 'payload', return_value={}):
+            evs = list(insights.generate_stream('funnel', [], 30))
+        self.assertEqual([e['t'] for e in evs], ['reset', 'delta', 'done'])
+        self.assertEqual(evs[-1]['provider'], 'Groq')
+        self.assertEqual(len(calls), 2)

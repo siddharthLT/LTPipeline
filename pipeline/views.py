@@ -1,4 +1,5 @@
 import datetime
+import json
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
@@ -397,6 +398,8 @@ def usage(request):
     accounts = list(Account.objects.prefetch_related('stage_progress'))
     ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': list(zip(posthog.SHORT, [l for _, l in posthog.ACTIONS])),
            'windows': (7, 14, 30, 90)}
+    from .models import UsageInsight
+    ctx['insight'] = UsageInsight.objects.filter(tab=tab, days=days).first()
     try:
         rows, unmatched, daily, totals = posthog.join(accounts, days)
         by_day = {}
@@ -419,6 +422,39 @@ def usage(request):
     except Exception as e:  # network or PostHog errors should not break the page
         ctx['error'] = 'PostHog did not answer: %s' % e
     return render(request, 'pipeline/usage.html', ctx)
+
+
+@login_required
+@require_POST
+def usage_insights(request):
+    """Generate a new AI summary for one Product usage tab, streamed as it is written. It replaces the shared one for everybody."""
+    from django.http import StreamingHttpResponse
+    from . import insights, posthog
+    from .models import UsageInsight
+    tab = request.POST.get('tab', '')
+    try:
+        days = int(request.POST.get('days', 30))
+    except ValueError:
+        days = 30
+    if tab not in insights.TABS or days not in (7, 14, 30, 90):
+        return JsonResponse({'error': 'Unknown tab or window.'}, status=400)
+    who = request.user.email
+
+    def events():
+        try:
+            for ev in insights.generate_stream(tab, list(Account.objects.prefetch_related('stage_progress')), days):
+                if ev['t'] == 'done':
+                    UsageInsight.objects.update_or_create(tab=tab, days=days, defaults={'content': ev['content'], 'generated_by': who})
+                yield json.dumps(ev) + '\n'
+        except (insights.NotConfigured, posthog.NotConfigured) as e:
+            yield json.dumps({'t': 'error', 'v': str(e)}) + '\n'
+        except Exception as e:  # PostHog or the AI providers failing should show as a message, not a broken page
+            yield json.dumps({'t': 'error', 'v': 'Could not generate insights: %s' % e}) + '\n'
+
+    resp = StreamingHttpResponse(events(), content_type='application/x-ndjson')
+    resp['Cache-Control'] = 'no-cache'
+    resp['X-Accel-Buffering'] = 'no'
+    return resp
 
 
 def _recordings_context(accounts, days):

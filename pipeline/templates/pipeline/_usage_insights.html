@@ -1,0 +1,26 @@
+<section class="card ins" aria-label="AI insights" data-insights data-url="{% url 'pipeline:usage_insights' %}" data-tab="{{ tab }}" data-days="{{ days }}">
+  {% csrf_token %}
+  <div class="ins__head">
+    <div>
+      <h2 class="t-h3">AI insights</h2>
+      <p class="t-meta" data-insights-meta>{% if insight %}Generated {{ insight.generated_at|date:"M j, H:i" }}{% if insight.generated_by %} by {{ insight.generated_by }}{% endif %} for the last {{ days }} days. Everyone sees this one until someone generates a new one.{% else %}Nothing generated yet for this tab and window. A summary covers only this tab and is shared with everyone.{% endif %}</p>
+    </div>
+    <button type="button" class="btn btn--primary btn--sm ins__btn" data-insights-go>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+      <span>Show Me New Insights</span>
+    </button>
+  </div>
+  <p class="ins__loading" data-insights-loading hidden role="status"><span class="ins__spin" aria-hidden="true"></span>Generating insights…</p>
+  <p class="field-error ins__err" data-insights-err role="alert" hidden></p>
+  <div data-insights-body>
+  {% if insight %}{% with c=insight.content %}
+  <p class="ins__headline">{{ c.headline }}</p>
+  <div class="ins__grid">
+    {% if c.highlights %}<div class="ins__box ins__box--hi"><h3>Key highlights</h3><ul>{% for x in c.highlights %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if c.insights %}<div class="ins__box"><h3>General insights</h3><ul>{% for x in c.insights %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if c.outliers %}<div class="ins__box"><h3>Outliers</h3><ul>{% for x in c.outliers %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if c.risks %}<div class="ins__box ins__box--risk"><h3>Risks</h3><ul>{% for x in c.risks %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+  {% endwith %}{% endif %}
+  </div>
+</section>

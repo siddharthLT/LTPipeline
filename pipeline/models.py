@@ -447,3 +447,18 @@ def ensure_mapped(account):
 def _mapped_for_new_account(sender, instance, created, **kwargs):
     if created and instance.domain:
         ensure_mapped(instance)
+
+
+class UsageInsight(models.Model):
+    """The latest AI summary for one Product usage tab and window. Shared by every user until someone generates a new one."""
+    tab = models.CharField(max_length=20)
+    days = models.PositiveSmallIntegerField()
+    content = models.JSONField(default=dict)
+    generated_by = models.CharField(max_length=254, blank=True)
+    generated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('tab', 'days')]
+
+    def __str__(self):
+        return '%s (%dd)' % (self.tab, self.days)
