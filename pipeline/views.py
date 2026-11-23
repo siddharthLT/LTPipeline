@@ -425,6 +425,17 @@ def usage(request):
 
 
 @login_required
+def usage_live(request):
+    """Who is on BioLens right now, for the red dot on the Recordings tab."""
+    from . import posthog
+    try:
+        people = posthog.live(list(Account.objects.only('name', 'domain')))
+    except Exception:  # the badge is a nicety; stay quiet if PostHog is down
+        return JsonResponse({'count': 0, 'people': [], 'minutes': posthog.LIVE_MINUTES})
+    return JsonResponse({'count': len(people), 'people': people, 'minutes': posthog.LIVE_MINUTES})
+
+
+@login_required
 @require_POST
 def usage_insights(request):
     """Generate a new AI summary for one Product usage tab, streamed as it is written. It replaces the shared one for everybody."""

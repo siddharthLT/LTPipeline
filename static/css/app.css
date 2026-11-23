@@ -787,6 +787,21 @@ tbody .gantt__acct, .gantt__cell { height: 44px !important; }
 .rec__tags { gap: 4px; }
 .recs__none { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) { .rec__thumb, .rec__play, .ucard { transition: none; } .rec__thumb:hover { transform: none; } }
+
+/* live users badge on the Recordings tab */
+.live { position: relative; display: inline-flex; align-items: center; gap: 5px; margin-left: 7px; vertical-align: middle; }
+.live[hidden] { display: none; }
+.live__dot { width: 8px; height: 8px; border-radius: 50%; background: #D92D20; box-shadow: 0 0 0 0 rgba(217, 45, 32, .5); animation: live-pulse 1.8s infinite; }
+.live__n { font-size: var(--fs-micro); font-weight: 600; color: #D92D20; font-variant-numeric: tabular-nums; }
+.live__pop { display: none; position: absolute; top: calc(100% + 10px); left: 0; z-index: 30; min-width: 240px; max-width: 320px; padding: var(--s-3);
+  background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); color: var(--ink);
+  font-weight: 400; text-align: left; white-space: normal; }
+.live:hover .live__pop, .seg__item:focus-visible .live__pop { display: grid; gap: var(--s-2); }
+.live__h { font-size: var(--fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.live__row { display: grid; font-size: var(--fs-label); line-height: 1.35; }
+.live__row span { color: var(--ink-2); }
+@keyframes live-pulse { 70% { box-shadow: 0 0 0 7px rgba(217, 45, 32, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 45, 32, 0); } }
+@media (prefers-reduced-motion: reduce) { .live__dot { animation: none; } }
 .recs__sort select { width: auto; min-width: 150px; min-height: var(--control-sm); }
 .rec__brand { position: absolute; left: 12px; max-width: 58%; top: 10px; font-size: 22px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--brand, #fff); text-shadow: var(--brand-shadow, none); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feat__none { margin: var(--s-3) 0 0; }

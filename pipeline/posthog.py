@@ -2,6 +2,8 @@
 import json
 import os
 import re
+import time
+import urllib.error
 import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -51,8 +53,17 @@ def hql(query, pid):
         '%s/api/projects/%s/query/' % (host, pid),
         data=json.dumps({'query': {'kind': 'HogQLQuery', 'query': query}}).encode(),
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r).get('results', [])
+    for attempt in range(3):  # PostHog now and then answers 502/503/504 or drops the connection; a retry usually works
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r).get('results', [])
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 502, 503, 504) or attempt == 2:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 2:
+                raise
+        time.sleep(1.5 * (attempt + 1))
 
 
 def _where(days):
@@ -237,6 +248,38 @@ def shape(rows, daily, days):
     return {'series': series, 'peak': peak, 'features': feature_rows, 'mix': mix, 'cards': cards,
             'unused': [f['label'] for f in feature_rows if not f['n']],
             'active_users': len({r['email'] for r in daily}), 'first': names[span[0]], 'last': names[span[-1]]}
+
+
+# ---- who is on BioLens right now ----
+
+LIVE_MINUTES = 5
+
+
+def live(accounts):
+    """Client users with an event in the last few minutes, across both projects, newest first. Cached for 30 seconds."""
+    people = cache.get('posthog-live')
+    if people is None:
+        q = """SELECT person.properties.email, any(person.properties.name), max(timestamp),
+          argMax(properties.`$current_url`, timestamp), argMax(properties.`$session_id`, timestamp)
+          FROM events WHERE %s GROUP BY person.properties.email LIMIT 200""" % _where(0).replace(
+            'timestamp >= now() - INTERVAL 0 DAY', 'timestamp >= now() - INTERVAL %d MINUTE' % LIVE_MINUTES)
+        merged = {}
+        for pid in project_ids():
+            for email, name, last, url, sid in hql(q, pid):
+                email = email.lower()
+                if email not in merged or str(last) > str(merged[email]['last']):
+                    merged[email] = {'email': email, 'name': name or '', 'last': last, 'area': area_of(url) or 'BioLens',
+                                     'replay': replay_url(sid, pid) if sid else ''}
+        people = sorted(merged.values(), key=lambda p: str(p['last']), reverse=True)
+        cache.set('posthog-live', people, 30)
+    by_domain = by_domain_of(accounts)
+    now = datetime.now(timezone.utc)
+    out = []
+    for p in people:
+        acct = match_account(p['email'], by_domain)
+        out.append({'who': p['name'] or p['email'], 'email': p['email'], 'account': acct.name if acct else '', 'area': p['area'],
+                    'ago': max(0, int((now - _when(p['last'])).total_seconds())), 'replay': p['replay']})
+    return out
 
 
 # ---- session recordings ----

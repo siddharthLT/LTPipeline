@@ -556,6 +556,32 @@ class FunnelTests(TestCase):
             self.assertEqual(f['total'], 3)
 
 
+class LiveUsersTests(Base):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.delete('posthog-live')
+
+    def test_live_counts_people_across_projects_and_matches_account(self):
+        from unittest import mock
+        from . import posthog
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        rows = [('Ann Lee@Acme.com', 'Ann', now, 'https://app.x/biolens/companies/1', 's1')]
+        Account.objects.create(name='Acme', domain='acme.com')
+        with mock.patch.object(posthog, 'hql', return_value=rows):
+            r = self.client.get(reverse('pipeline:usage_live'))
+        data = r.json()
+        self.assertEqual(data['count'], 1)  # the same person in both projects is counted once
+        self.assertEqual(data['people'][0]['account'], 'Acme')
+        self.assertEqual(data['people'][0]['area'], 'Company profile')
+
+    def test_live_is_quiet_when_posthog_fails(self):
+        from unittest import mock
+        from . import posthog
+        with mock.patch.object(posthog, 'hql', side_effect=OSError('down')):
+            self.assertEqual(self.client.get(reverse('pipeline:usage_live')).json()['count'], 0)
+
+
 class UsageInsightTests(Base):
     def stream(self, tab='funnel', content=None, days=30, **kw):
         import json

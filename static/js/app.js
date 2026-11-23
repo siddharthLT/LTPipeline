@@ -512,3 +512,31 @@ document.querySelectorAll('[data-insights]').forEach(function (box) {
     });
   });
 });
+
+/* red dot and count of who is on BioLens right now, on the Recordings tab */
+document.addEventListener('DOMContentLoaded', function () {
+  var nav = document.querySelector('[data-live-url]');
+  var live = nav && nav.querySelector('.live');
+  if (!live) return;
+  var n = live.querySelector('.live__n'), pop = live.querySelector('.live__pop');
+  function ago(s) { return s < 60 ? 'just now' : Math.round(s / 60) + ' min ago'; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+  function poll() {
+    if (document.hidden) return;
+    fetch(nav.dataset.liveUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      live.hidden = !d.count;
+      n.textContent = d.count;
+      pop.textContent = '';
+      pop.appendChild(el('div', 'live__h', d.count + ' live now · active in the last ' + d.minutes + ' min'));
+      d.people.forEach(function (p) {
+        var row = el('div', 'live__row');
+        row.appendChild(el('strong', '', p.who + (p.account ? ' · ' + p.account : '')));
+        row.appendChild(el('span', '', p.area + ' · ' + ago(p.ago)));
+        pop.appendChild(row);
+      });
+    }).catch(function () {});
+  }
+  poll();
+  setInterval(poll, 30000);
+  document.addEventListener('visibilitychange', poll);
+});
