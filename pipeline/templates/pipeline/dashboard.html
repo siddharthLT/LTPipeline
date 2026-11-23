@@ -109,8 +109,8 @@
             </button>
             <input type="checkbox" class="hr-pick" value="{{ account.pk }}" aria-label="Select {{ account.name }} for Hand Raisers view">
             <a class="gantt__link" href="{% url 'pipeline:account_detail' account.pk %}">
-              <span class="gantt__co clamp-1">{{ account.name }}</span>
-              <span class="gantt__dom mono clamp-1">{{ account.domain }}</span>
+              {% include "partials/logo.html" with url=account.logo_url name=account.name small=True %}<span class="gantt__txt"><span class="gantt__co clamp-1">{{ account.name }}</span>
+              <span class="gantt__dom mono clamp-1">{{ account.domain }}</span></span>
             </a>
             {% if account.key_connections %}
             <span class="gantt__conn" tabindex="0" title="Connection through {{ account.key_connections|join:' and ' }}" aria-label="Connection through {{ account.key_connections|join:' and ' }}">

@@ -1,0 +1,88 @@
+{% extends "app.html" %}
+{% block title %}Mapped universe · Lunartree{% endblock %}
+{% block page_class %}page--mapped{% endblock %}
+{% load static %}
+{% block head %}{% if view == 'map' %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}"><link rel="stylesheet" href="{% static 'vendor/leaflet/MarkerCluster.css' %}">{% endif %}{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Mapped universe</span>
+  <h1 class="t-h1">Relevant companies not in the pipeline</h1>
+  <p class="t-meta">{{ total }} CDMOs, CROs, reagent, equipment, packaging and instrument suppliers from the Company Map. Pharma, biotech and anything already in the pipeline are left out.</p>
+</header>
+
+<form method="get" class="mu__filters" data-autosubmit data-suggest-url="{% url 'pipeline:mapped_suggest' %}">
+  {% for s in segs %}<input type="hidden" name="segment" value="{{ s }}">{% endfor %}
+  {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
+  {% if view == 'map' %}<input type="hidden" name="view" value="map">{% endif %}
+  <div class="mu__row">
+    <label class="filters__search mu__search">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <input type="search" name="q" value="{{ q }}" class="field__input field__input--plain" placeholder="Search company, website, city" aria-label="Search the mapped universe" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="mu-sugg" data-suggest>
+      <ul class="mu__sugg" id="mu-sugg" role="listbox" hidden></ul>
+    </label>
+    <button type="submit" class="btn btn--primary btn--sm mu__go">Search</button>
+    <label class="mu__sel"><span class="sr-only">Country</span>
+      <select name="country" class="field__input field__input--plain field__select" data-change-submit>
+        <option value="">All countries</option>
+        {% for c in countries %}<option value="{{ c }}"{% if c == country %} selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="mu__sel"><span class="sr-only">State</span>
+      <select name="state" class="field__input field__input--plain field__select" data-change-submit>
+        <option value="">All US states</option>
+        {% for s in states %}<option value="{{ s }}"{% if s == state %} selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="chip chip--sm mu__logo"><input type="checkbox" name="logo" value="no" data-change-submit{% if logo == 'no' %} checked{% endif %}> No logo yet</label>
+    <div class="mu__toggle" role="group" aria-label="View">
+      <a class="mu__tbtn" href="?{{ list_qs }}" aria-pressed="{% if view == 'list' %}true{% else %}false{% endif %}">List</a>
+      <a class="mu__tbtn" href="?{{ map_qs }}" aria-pressed="{% if view == 'map' %}true{% else %}false{% endif %}">Map</a>
+    </div>
+    {% if clear %}<a class="btn btn--quiet btn--sm" href="{% url 'pipeline:mapped_universe' %}">Clear all</a>{% endif %}
+  </div>
+</form>
+
+<div class="mu__chips" aria-label="Quick filters">
+  <div class="chips chips--scroll">
+    {% for r in regions %}<a class="chip chip--sm" href="?{{ r.qs }}" aria-pressed="{% if r.on %}true{% else %}false{% endif %}">{{ r.name }} <span class="chip__count">{{ r.n }}</span></a>{% endfor %}
+  </div>
+  <div class="chips chips--scroll">
+    {% for s in segments %}<a class="chip chip--sm" href="?{{ s.qs }}" aria-pressed="{% if s.on %}true{% else %}false{% endif %}">{{ s.name }} <span class="chip__count">{{ s.n }}</span></a>{% endfor %}
+  </div>
+</div>
+
+{% if view == 'map' %}
+<section class="card mu__card mu__mapcard">
+  <p class="t-meta mu__count mono">{{ mapped }} on the map of {{ shown }}{% if shown != total %} (filtered from {{ total }}){% endif %}{% if not_mapped %} &middot; {{ not_mapped }} without a location <a href="?{{ unlocated_qs }}">{% if located == 'no' %}show all{% else %}list them{% endif %}</a>{% endif %}</p>
+  <div id="mu-map" class="mu__map" role="application" aria-label="Map of companies"></div>
+  <p class="t-meta mu__legend"><span class="mu__dot"></span> exact address <span class="mu__dot mu__dot--approx"></span> approximate (city)</p>
+</section>
+{{ points|json_script:"mu-points" }}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'vendor/leaflet/leaflet.markercluster.js' %}"></script>
+<script src="{% static 'js/mapview.js' %}"></script>
+{% else %}
+<section class="card mu__card">
+  <p class="t-meta mu__count mono">{% if page.paginator.count %}{{ page.start_index }}–{{ page.end_index }} of {{ shown }}{% else %}0 of {{ total }}{% endif %}{% if shown != total %} (filtered from {{ total }}){% endif %}</p>
+  <div class="usage__scroll mu__scroll"><table class="rules-table mu__table">
+    <thead><tr><th>Company</th><th>Website</th><th>Segment</th><th>Country</th><th>City</th></tr></thead>
+    <tbody>
+    {% for c in page %}<tr>
+      <td><span class="mu__name">{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}<span class="mu__nm">{{ c.name }}</span></span></td>
+      <td>{% if c.domain or c.url %}<a class="mono mu__dom" href="{% if c.url %}{{ c.url }}{% else %}https://{{ c.domain }}{% endif %}" target="_blank" rel="noopener">{{ c.domain|default:c.url }}</a>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>
+      <td><span class="tag tag--type">{{ c.segment }}</span></td>
+      <td>{{ c.country|default:"·" }}</td>
+      <td>{{ c.city|default:"·" }}{% if c.state and c.country == "United States" %}<span class="t-meta">, {{ c.state }}</span>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5">Nothing matches those filters.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% if page.paginator.num_pages > 1 %}
+  <nav class="mu__pager" aria-label="Pages">
+    {% if prev_qs %}<a class="btn btn--sm" href="?{{ prev_qs }}">Previous</a>{% else %}<span class="btn btn--sm" aria-disabled="true">Previous</span>{% endif %}
+    <span class="t-meta mono">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if next_qs %}<a class="btn btn--sm" href="?{{ next_qs }}">Next</a>{% else %}<span class="btn btn--sm" aria-disabled="true">Next</span>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

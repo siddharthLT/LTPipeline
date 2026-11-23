@@ -37,12 +37,16 @@ def _in(events):
     return ','.join("'%s'" % e for e in events)
 
 
-def hql(query):
-    key = os.environ.get('POSTHOG_API_KEY')
+def project_ids():
+    """PostHog projects to read: app-prod (our usual data) and lunartree-neuland-prod (Neuland's usage)."""
+    return [int(p) for p in os.environ.get('POSTHOG_PROJECT_IDS', '234813,600726').split(',') if p.strip()]
+
+
+def hql(query, pid):
+    key = os.environ.get('POSTHOG_API_TRACKER') or os.environ.get('POSTHOG_API_KEY')
     if not key:
-        raise NotConfigured('POSTHOG_API_KEY is not set')
+        raise NotConfigured('POSTHOG_API_TRACKER is not set')
     host = os.environ.get('POSTHOG_HOST', 'https://us.posthog.com')
-    pid = os.environ.get('POSTHOG_PROJECT_ID', '234813')
     req = urllib.request.Request(
         '%s/api/projects/%s/query/' % (host, pid),
         data=json.dumps({'query': {'kind': 'HogQLQuery', 'query': query}}).encode(),
@@ -66,7 +70,20 @@ def user_rows(days):
       FROM events WHERE %(w)s GROUP BY email ORDER BY evts DESC LIMIT 500""" % {
         'all': _in(ALL_EVENTS), 'act': _in(ACTION_EVENTS), 'ai': _in(AI_EVENTS), 'w': _where(days)}
     keys = ['email', 'name', 'evts', 'sessions', 'acts', 'ai', 'rage', 'pvs', 'feats', 'last_seen', 'profiles']
-    return [dict(zip(keys, r)) for r in hql(q)]
+    merged = {}
+    for pid in project_ids():
+        for u in (dict(zip(keys, r)) for r in hql(q, pid)):
+            m = merged.get(u['email'])  # the same person can appear in more than one project
+            if not m:
+                merged[u['email']] = u
+                continue
+            for k in ('evts', 'sessions', 'acts', 'ai', 'rage', 'pvs', 'profiles'):
+                m[k] += u[k]
+            m['feats'] = max(m['feats'], u['feats'])
+            m['name'] = m['name'] or u['name']
+            if str(u['last_seen']) > str(m['last_seen']):
+                m['last_seen'] = u['last_seen']
+    return sorted(merged.values(), key=lambda u: -u['evts'])
 
 
 def daily_rows(days):
@@ -74,7 +91,16 @@ def daily_rows(days):
     q = """SELECT toDate(timestamp) AS day, person.properties.email AS email, countIf(event = '$pageview') AS pvs,
       %s, countIf(event IN (%s)) AS total FROM events WHERE %s GROUP BY day, email
       ORDER BY day DESC, total DESC LIMIT 5000""" % (cols, _in(ALL_EVENTS), _where(days))
-    return hql(q)
+    merged = {}
+    for pid in project_ids():
+        for r in hql(q, pid):
+            m = merged.get((str(r[0]), r[1]))
+            if not m:
+                merged[(str(r[0]), r[1])] = list(r)
+                continue
+            for i in range(2, len(r)):  # pageviews, each action count, total
+                m[i] += r[i]
+    return sorted(merged.values(), key=lambda r: (str(r[0]), r[-1]), reverse=True)
 
 
 def usage(days):
@@ -274,9 +300,8 @@ def area_of(url):
     return None
 
 
-def replay_url(session_id):
-    return '%s/project/%s/replay/%s' % (os.environ.get('POSTHOG_HOST', 'https://us.posthog.com'),
-                                         os.environ.get('POSTHOG_PROJECT_ID', '234813'), session_id)
+def replay_url(session_id, pid):
+    return '%s/project/%s/replay/%s' % (os.environ.get('POSTHOG_HOST', 'https://us.posthog.com'), pid, session_id)
 
 
 def _when(s):
@@ -314,16 +339,17 @@ def recordings(days):
       WHERE s.start_time >= now() - INTERVAL %(d)d DAY AND e.email IS NOT NULL AND e.email LIKE '%%@%%'
         AND e.email NOT LIKE '%%@lunartree.bio'
       ORDER BY s.start_time DESC LIMIT 1500""" % {'d': days + 1}
-    sessions = hql(q)
+    sessions = [(pid,) + tuple(r) for pid in project_ids() for r in hql(q, pid)]
     marks = defaultdict(list)
     ev_q = """SELECT properties.`$session_id`, timestamp, event FROM events
       WHERE timestamp >= now() - INTERVAL %d DAY AND event IN (%s) AND person.properties.email LIKE '%%@%%'
         AND person.properties.email NOT LIKE '%%@lunartree.bio' ORDER BY timestamp LIMIT 40000""" % (days + 1, _in(MOMENTS))
-    for sid, ts, ev in hql(ev_q):
-        marks[sid].append((_when(ts), ev))
+    for pid in project_ids():
+        for sid, ts, ev in hql(ev_q, pid):
+            marks[sid].append((_when(ts), ev))
     now = datetime.now(timezone.utc)
     out = []
-    for sid, start, end, active_ms, clicks, keys, errors, first_url, urls, keep, email, name, country, browser, os_, device in sessions:
+    for pid, sid, start, end, active_ms, clicks, keys, errors, first_url, urls, keep, email, name, country, browser, os_, device in sessions:
         start, end = _when(start), _when(end)
         if start + timedelta(days=keep or REPLAY_RETENTION_DAYS) < now:
             continue  # PostHog has already deleted the footage
@@ -339,7 +365,7 @@ def recordings(days):
                 buckets_at[slot] = (kind, MARK_RANK[kind])
         areas = list(dict.fromkeys(a for a in (area_of(u) for u in (urls or [first_url])) if a))
         out.append({
-            'id': sid, 'url': replay_url(sid), 'email': email, 'name': name or '', 'ini': initials(name, email),
+            'id': sid, 'url': replay_url(sid, pid), 'email': email, 'name': name or '', 'ini': initials(name, email),
             'country': country or '', 'browser': browser or '', 'os': os_ or '', 'device': device or '',
             'start': start, 'dur': dur, 'active': int((active_ms or 0) / 1000), 'clicks': clicks or 0, 'keys': keys or 0,
             'errors': errors or 0, 'areas': areas, 'pages': len(urls or []),
@@ -349,5 +375,6 @@ def recordings(days):
             'title': _title(moments, areas), 'bucket': bucket(dur),
             'live': min(100, round(((active_ms or 0) / 1000) / dur * 100)),
         })
+    out.sort(key=lambda r: r['start'], reverse=True)
     cache.set(k, out, 300)
     return out

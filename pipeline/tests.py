@@ -430,3 +430,78 @@ class UsageVisualTests(Base):
             self.assertContains(r, '6:40')
             self.assertContains(r, 'mk--rage')
             self.assertContains(r, 'data-acct="%d"' % self.account.pk)
+
+
+class MappedUniverseTests(Base):
+    def setUp(self):
+        super().setUp()
+        from .models import MappedCompany
+        rows = [(1, 'Alpha CRO', 'alpha.com', 'CRO', 'United States', 'Boston', 'MA'),
+                (2, 'Beta Reagents', 'beta.com', 'Reagents', 'United States', 'Austin', 'TX'),
+                (3, 'Gamma CDMO', 'gamma.de', 'CDMO', 'Germany', 'Berlin', ''),
+                (4, 'Delta Packaging', '', 'Packaging', '', '', '')]
+        from .models import world_region
+        for i, name, dom, seg, country, city, state in rows:
+            MappedCompany.objects.create(map_id=i, name=name, domain=dom, segment=seg, country=country, city=city, state=state,
+                                         world_region=world_region(country), latitude=52.5 if i == 3 else None, longitude=13.4 if i == 3 else None,
+                                         logo_url='https://example.com/l.png' if i == 1 else '')
+        for i in range(5, 70):
+            MappedCompany.objects.create(map_id=i, name='Filler %02d' % i, segment='CRO', country='United States')
+        self.url = reverse('pipeline:mapped_universe')
+
+    def names(self, r):
+        return [c.name for c in r.context['page']]
+
+    def test_list_is_paginated_and_shows_logo_or_initial(self):
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.context['page']), 50)
+        self.assertEqual(r.context['shown'], 69)
+        self.assertContains(r, 'https://example.com/l.png')
+        self.assertContains(r, 'logo__ini')
+        self.assertEqual(len(self.client.get(self.url + '?page=2').context['page']), 19)
+
+    def test_quick_filters(self):
+        self.assertEqual(self.names(self.client.get(self.url + '?segment=CDMO')), ['Gamma CDMO'])
+        self.assertEqual(sorted(self.names(self.client.get(self.url + '?segment=CDMO&segment=Reagents'))), ['Beta Reagents', 'Gamma CDMO'])
+        self.assertEqual(self.names(self.client.get(self.url + '?region=Europe')), ['Gamma CDMO'])
+        self.assertEqual(self.names(self.client.get(self.url + '?region=Unknown')), ['Delta Packaging'])
+        self.assertEqual(self.names(self.client.get(self.url + '?country=Germany')), ['Gamma CDMO'])
+        self.assertEqual(self.names(self.client.get(self.url + '?state=TX')), ['Beta Reagents'])
+        self.assertEqual(self.names(self.client.get(self.url + '?q=berlin')), ['Gamma CDMO'])
+        self.assertEqual(self.names(self.client.get(self.url + '?q=alpha.com')), ['Alpha CRO'])
+        self.assertNotIn('Alpha CRO', self.names(self.client.get(self.url + '?logo=no')))
+
+    def test_map_view_has_points_and_shares_filters(self):
+        r = self.client.get(self.url + '?view=map&region=Europe')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([p['n'] for p in r.context['points']], ['Gamma CDMO'])
+        self.assertContains(r, 'mu-map')
+        r = self.client.get(self.url + '?view=map')
+        self.assertEqual(r.context['mapped'], 1)
+        self.assertEqual(r.context['not_mapped'], 68)
+        self.assertEqual(len(self.client.get(self.url + '?located=no').context['page']), 50)
+
+    def test_suggest_dropdown(self):
+        u = reverse('pipeline:mapped_suggest')
+        self.assertEqual(self.client.get(u + '?q=a').json()['results'], [])
+        names = [r['name'] for r in self.client.get(u + '?q=ga').json()['results']]
+        self.assertEqual(names, ['Gamma CDMO'])
+        self.assertEqual(len(self.client.get(u + '?q=filler').json()['results']), 8)
+        self.assertEqual(self.client.get(u + '?q=filler&region=Europe').json()['results'], [])
+
+    def test_requires_login(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+
+    def test_import_rules(self):
+        from .management.commands.import_mapped_universe import keep, name_key, root, host
+        base = {'segment': 'Equipment', 'industry': ''}
+        self.assertTrue(keep(dict(base, industry='research')))
+        self.assertFalse(keep(dict(base, industry='medical devices')))
+        self.assertFalse(keep({'segment': 'Pharma / Biotech', 'industry': ''}))
+        self.assertFalse(keep({'segment': 'CRO', 'industry': 'information technology & services'}))
+        self.assertTrue(keep({'segment': 'CDMO/CRO', 'industry': 'pharmaceuticals'}))
+        self.assertEqual(root(host('https://www.Shilpabio.com/x')), 'shilpabio.com')
+        self.assertEqual(root('bio.co.uk'), 'bio.co.uk')
+        self.assertEqual(name_key('Acme Pharma, Inc.'), name_key('ACME'))

@@ -189,3 +189,7 @@ body:has(.deck-empty) { overflow: auto; }
            box-shadow: none; border-radius: 0; break-after: page; break-inside: avoid; }
   .slide:last-child { break-after: auto; }
 }
+.slide__name--logo { display: flex; align-items: center; gap: 14px; }
+.slide__name--logo .logo { width: 48px; height: 48px; border-radius: 11px; font-size: 20px; }
+.ov__co--logo { display: flex; align-items: center; gap: 10px; }
+.ov__co--logo > span:last-child { display: grid; gap: 2px; min-width: 0; }

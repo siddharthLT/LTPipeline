@@ -10,7 +10,7 @@
 
 <header class="thesis-head">
   <span class="eyebrow">Buying thesis</span>
-  <h1 class="t-h1">{{ account.name }}</h1>
+  <h1 class="t-h1 thesis-head__title">{% include "partials/logo.html" with url=account.logo_url name=account.name %}<span>{{ account.name }}</span></h1>
   <div class="tags">
     <span class="tag tag--type">{{ account.furthest_stage_name }}</span>
     {% if account.deal_value %}<span class="tag mono">{{ account.deal_value }}</span>{% endif %}

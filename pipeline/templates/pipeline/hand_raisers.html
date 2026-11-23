@@ -35,7 +35,7 @@
           <div class="ov__row ov__row--head"><span>Company</span><span>Journey, 12 steps</span><span class="ov__c">Probability</span><span>Last activity</span><span>Next dated action</span></div>
           {% for a in page %}
           <button type="button" class="ov__row" data-goto="{{ a.slide_no }}">
-            <span class="ov__co"><strong>{{ a.name }}</strong><span class="mono">{{ a.furthest_stage_name }}</span></span>
+            <span class="ov__co ov__co--logo">{% include "partials/logo.html" with url=a.logo_url name=a.name small=True %}<span><strong>{{ a.name }}</strong><span class="mono">{{ a.furthest_stage_name }}</span></span></span>
             <span class="ov__strip" aria-hidden="true">{% for r in a.rows %}<i class="ov__cell ov__cell--{{ r.state }}{% if r.current %} is-current{% endif %}"></i>{% endfor %}</span>
             <span class="ov__prob"><strong class="mono">{{ a.score }}%</strong><span class="ov__bar"><span style="width: {{ a.score }}%"></span></span></span>
             <span class="ov__last">{% if a.last_touch %}<strong>{{ a.last_touch.ago }}</strong><span class="mono">{{ a.last_touch.date|date:"M j" }} · {{ a.last_touch.kind }}</span>{% else %}<span class="slide__none">Nothing logged</span>{% endif %}</span>
@@ -52,7 +52,7 @@
         <div class="slide__head">
           <div class="slide__id">
             <span class="eyebrow">Hand raiser {{ forloop.counter }} of {{ accounts|length }}</span>
-            <h1 class="slide__name">{{ a.name }}</h1>
+            <h1 class="slide__name slide__name--logo">{% include "partials/logo.html" with url=a.logo_url name=a.name %}<span>{{ a.name }}</span></h1>
             <p class="slide__dom mono">{{ a.domain }}</p>
           </div>
           <span class="slide__prob">

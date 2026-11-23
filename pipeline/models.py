@@ -29,6 +29,7 @@ class Account(models.Model):
     name = models.CharField(max_length=200)
     segment = models.CharField(max_length=12, choices=SEGMENTS, blank=True)
     domain = models.CharField(max_length=253, unique=True)
+    logo_url = models.URLField(max_length=500, blank=True)
     deal_value = models.CharField(max_length=40, blank=True, help_text='e.g. $15K')
     sales_marketing_team = models.PositiveIntegerField(null=True, blank=True, help_text='People in sales and marketing (Apollo)')
     team_size_source = models.CharField(max_length=300, blank=True)
@@ -364,6 +365,61 @@ class UsageStage(models.Model):
 
     class Meta:
         ordering = ['order']
+
+    def __str__(self):
+        return self.name
+
+
+EUROPE = {'Germany', 'Switzerland', 'France', 'United Kingdom', 'Spain', 'Italy', 'Ireland', 'Sweden', 'Netherlands', 'Belgium', 'Denmark',
+          'Poland', 'Estonia', 'Austria', 'Hungary', 'Slovakia', 'Greece', 'Norway', 'Finland', 'Portugal', 'Czechia', 'Czech Republic',
+          'Lithuania', 'Latvia', 'Slovenia', 'Croatia', 'Romania', 'Bulgaria', 'Iceland', 'Luxembourg', 'Malta', 'Serbia', 'Ukraine'}
+ASIA_PACIFIC = {'China', 'Japan', 'South Korea', 'India', 'Australia', 'Taiwan', 'Singapore', 'Hong Kong', 'New Zealand', 'Thailand',
+                'Malaysia', 'Indonesia', 'Vietnam', 'Philippines', 'Pakistan', 'Bangladesh', 'Sri Lanka'}
+MIDDLE_EAST_AFRICA = {'Israel', 'South Africa', 'United Arab Emirates', 'Saudi Arabia', 'Egypt', 'Turkey', 'Qatar', 'Jordan', 'Kenya', 'Nigeria', 'Morocco'}
+LATIN_AMERICA = {'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Uruguay', 'Costa Rica', 'Panama'}
+WORLD_REGIONS = ['US West', 'US East', 'US Central', 'US (state unknown)', 'Canada & Mexico', 'Europe', 'Asia-Pacific', 'Middle East & Africa', 'Latin America', 'Other', 'Unknown']
+
+
+def world_region(country, us_region=''):
+    """Region a company belongs to, from its country (and the Company Map's west/east split for the US)."""
+    if not country:
+        return 'Unknown'
+    if country == 'United States':
+        return {'west': 'US West', 'east': 'US East', 'other': 'US Central'}.get(us_region, 'US (state unknown)')
+    for name, group in (('Canada & Mexico', {'Canada', 'Mexico'}), ('Europe', EUROPE), ('Asia-Pacific', ASIA_PACIFIC),
+                        ('Middle East & Africa', MIDDLE_EAST_AFRICA), ('Latin America', LATIN_AMERICA)):
+        if country in group:
+            return name
+    return 'Other'
+
+
+class MappedCompany(models.Model):
+    """The mapped universe: CDMOs, CROs, reagent, equipment and packaging suppliers that are not in the pipeline."""
+    map_id = models.PositiveBigIntegerField(unique=True, help_text='id in the Company Map database this row came from')
+    name = models.CharField(max_length=200)
+    domain = models.CharField(max_length=253, blank=True, db_index=True)
+    url = models.URLField(max_length=500, blank=True)
+    logo_url = models.URLField(max_length=500, blank=True)
+    segment = models.CharField(max_length=40, db_index=True)
+    sub_type = models.CharField(max_length=200, blank=True)
+    product_category = models.TextField(blank=True)
+    address = models.CharField(max_length=300, blank=True, help_text='Street address as held in the Company Map')
+    city = models.CharField(max_length=120, blank=True)
+    state = models.CharField(max_length=60, blank=True)
+    state_name = models.CharField(max_length=80, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    country = models.CharField(max_length=80, blank=True, db_index=True)
+    world_region = models.CharField(max_length=24, blank=True, db_index=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    geo_source = models.CharField(max_length=12, blank=True, help_text="'source' came with the Company Map, 'address' and 'city' were geocoded")
+    employee_count = models.PositiveIntegerField(null=True, blank=True)
+    linkedin_url = models.URLField(max_length=500, blank=True)
+    source = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'mapped companies'
 
     def __str__(self):
         return self.name

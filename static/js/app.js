@@ -390,3 +390,57 @@ document.addEventListener('click', function (e) {
     show();
   });
 })();
+
+// Filter forms that apply as soon as a select or checkbox changes
+document.querySelectorAll('[data-autosubmit]').forEach(function (form) {
+  form.querySelectorAll('[data-change-submit]').forEach(function (el) {
+    el.addEventListener('change', function () { form.requestSubmit(); });
+  });
+});
+
+// Mapped universe: dropdown of matching companies while typing
+(function () {
+  var form = document.querySelector('[data-suggest-url]'), input = form && form.querySelector('[data-suggest]');
+  if (!input) return;
+  var list = document.getElementById('mu-sugg'), sel = -1, timer = null, seq = 0, items = [];
+  function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); sel = -1; }
+  function pick(name) { input.value = name; form.requestSubmit(); }
+  function mark() { Array.from(list.children).forEach(function (li, k) { li.classList.toggle('is-sel', k === sel); }); }
+  function render(rows) {
+    items = rows; list.textContent = '';
+    rows.forEach(function (r) {
+      var li = document.createElement('li'); li.setAttribute('role', 'option'); li.className = 'mu__opt';
+      var ini = document.createElement('span'); ini.className = 'logo logo--sm';
+      var i = document.createElement('span'); i.className = 'logo__ini'; i.textContent = (r.name || '?').charAt(0).toUpperCase(); ini.appendChild(i);
+      if (r.logo) { var im = document.createElement('img'); im.src = r.logo; im.alt = ''; im.onerror = function () { im.remove(); }; ini.appendChild(im); }
+      var t = document.createElement('span'); t.className = 'mu__opt-txt';
+      var n = document.createElement('strong'); n.textContent = r.name;
+      var m = document.createElement('span'); m.className = 't-meta'; m.textContent = [r.segment, r.place].filter(Boolean).join(' · ');
+      t.appendChild(n); t.appendChild(m); li.appendChild(ini); li.appendChild(t);
+      li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(r.name); });
+      list.appendChild(li);
+    });
+    list.hidden = !rows.length; input.setAttribute('aria-expanded', rows.length ? 'true' : 'false'); sel = -1;
+  }
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var v = input.value.trim();
+    if (v.length < 2) { close(); return; }
+    timer = setTimeout(function () {
+      var params = new URLSearchParams(new FormData(form)); params.set('q', v); params.delete('logo');
+      var me = ++seq;
+      fetch(form.dataset.suggestUrl + '?' + params.toString(), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (me === seq) render(d.results || []); })
+        .catch(close);
+    }, 150);
+  });
+  input.addEventListener('keydown', function (e) {
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); mark(); }
+    else if (e.key === 'Enter' && sel >= 0) { e.preventDefault(); pick(items[sel].name); }
+    else if (e.key === 'Escape') close();
+  });
+  input.addEventListener('blur', function () { setTimeout(close, 120); });
+})();

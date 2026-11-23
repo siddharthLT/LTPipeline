@@ -1,4 +1,5 @@
 import datetime
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
@@ -434,3 +435,98 @@ def _recordings_context(accounts, days):
     playlists = sorted(lists.values(), key=lambda p: (p['key'] == 'x', -p['n']))
     buckets = [{'key': k, 'label': label, 'n': sum(1 for r in recs if r['bucket'] == k)} for k, label, _ in posthog.BUCKETS]
     return {'recs': recs, 'playlists': playlists, 'buckets': buckets, 'rec_active': sum(r['active'] for r in recs)}
+
+
+MAPPED_PAGE = 50
+
+
+@login_required
+def mapped_suggest(request):
+    """Up to eight mapped companies matching what is being typed, for the search dropdown."""
+    from django.db.models import Case, IntegerField, Q, Value, When
+    from .models import MappedCompany
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+    qs = MappedCompany.objects.filter(Q(name__icontains=q) | Q(domain__icontains=q) | Q(city__icontains=q))
+    for key, field in (('region', 'world_region'), ('country', 'country'), ('state', 'state')):
+        if request.GET.get(key):
+            qs = qs.filter(**{field: request.GET[key]})
+    if request.GET.getlist('segment'):
+        qs = qs.filter(segment__in=request.GET.getlist('segment'))
+    qs = qs.annotate(rank=Case(When(name__istartswith=q, then=Value(0)), When(name__icontains=q, then=Value(1)), default=Value(2),
+                               output_field=IntegerField())).order_by('rank', 'name')[:8]
+    return JsonResponse({'results': [{'name': m.name, 'domain': m.domain, 'segment': m.segment, 'logo': m.logo_url,
+                                      'place': ', '.join(x for x in (m.city, m.state if m.country == 'United States' else m.country) if x)}
+                                     for m in qs]})
+
+
+@login_required
+def mapped_universe(request):
+    """Mapped companies that are not in the pipeline, as a paginated list or a world map. Filters apply to both."""
+    from django.core.paginator import Paginator
+    from django.db.models import Count, Q
+    from .models import WORLD_REGIONS, MappedCompany
+    g = request.GET
+    q = g.get('q', '').strip()
+    segs = [x for x in g.getlist('segment') if x]
+    view = 'map' if g.get('view') == 'map' else 'list'
+    region = g.get('region', '')
+    country = g.get('country', '')
+    state = g.get('state', '')
+    logo = g.get('logo', '')
+    located = g.get('located', '')
+    focus = g.get('focus', '')
+    base = MappedCompany.objects.all()
+    qs = base
+    if q:
+        qs = qs.filter(Q(name__icontains=q) | Q(domain__icontains=q) | Q(city__icontains=q) | Q(address__icontains=q) | Q(product_category__icontains=q))
+    if segs:
+        qs = qs.filter(segment__in=segs)
+    if region:
+        qs = qs.filter(world_region=region)
+    if country:
+        qs = qs.filter(country=country)
+    if state:
+        qs = qs.filter(state=state)
+    if logo == 'no':
+        qs = qs.filter(logo_url='')
+    if located == 'no':
+        qs = qs.filter(latitude__isnull=True)
+
+    def link(**over):
+        params = {'q': q, 'segment': segs, 'region': region, 'country': country, 'state': state, 'logo': logo,
+                  'located': located, 'view': 'map' if view == 'map' else ''}
+        params.update(over)
+        return urlencode({k: v for k, v in params.items() if v}, doseq=True)
+
+    seg_counts = dict(base.values_list('segment').annotate(n=Count('id')).order_by())
+    segments = [{'name': name, 'n': n, 'on': name in segs,
+                 'qs': link(segment=[x for x in segs if x != name] if name in segs else segs + [name], page='')}
+                for name, n in sorted(seg_counts.items(), key=lambda kv: -kv[1])]
+    region_counts = dict(base.values_list('world_region').annotate(n=Count('id')).order_by())
+    regions = [{'name': name, 'n': region_counts.get(name, 0), 'on': name == region, 'qs': link(region='' if name == region else name, page='', focus='')}
+               for name in WORLD_REGIONS if region_counts.get(name)]
+    unlocated = base.filter(latitude__isnull=True).count()
+    ctx = {
+        'nav': 'mapped', 'view': view, 'total': base.count(), 'shown': qs.count(),
+        'q': q, 'segments': segments, 'regions': regions, 'region': region, 'country': country, 'state': state, 'logo': logo,
+        'located': located, 'unlocated': unlocated, 'unlocated_qs': link(located='' if located == 'no' else 'no', page=''),
+        'countries': list(base.exclude(country='').order_by('country').values_list('country', flat=True).distinct()),
+        'states': list(base.filter(country='United States').exclude(state='').order_by('state').values_list('state', flat=True).distinct()),
+        'segs': segs, 'clear': any([q, segs, region, country, state, logo, located]),
+        'list_qs': link(view=''), 'map_qs': link(view='map'),
+        'page_size': MAPPED_PAGE,
+    }
+    if view == 'map':
+        points = list(qs.exclude(latitude__isnull=True).values(
+            'id', 'name', 'domain', 'url', 'segment', 'city', 'state', 'country', 'address', 'latitude', 'longitude', 'geo_source', 'logo_url'))
+        ctx.update(points=[{'id': p['id'], 'n': p['name'], 'd': p['domain'], 'u': p['url'], 's': p['segment'], 'c': p['city'], 'st': p['state'],
+                            'co': p['country'], 'a': p['address'], 'la': round(p['latitude'], 5), 'ln': round(p['longitude'], 5),
+                            'g': p['geo_source'], 'l': p['logo_url']} for p in points],
+                   mapped=len(points), not_mapped=ctx['shown'] - len(points), focus=focus)
+    else:
+        page = Paginator(qs.order_by('name'), MAPPED_PAGE).get_page(g.get('page'))
+        ctx.update(page=page, prev_qs=link(page=page.previous_page_number()) if page.has_previous() else '',
+                   next_qs=link(page=page.next_page_number()) if page.has_next() else '')
+    return render(request, 'pipeline/mapped_universe.html', ctx)
