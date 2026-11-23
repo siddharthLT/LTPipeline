@@ -1,10 +1,6 @@
 {% with f=funnel %}
 <section class="fn">
   <div class="fn__filters">
-    <nav class="seg" aria-label="Project">
-      <a class="seg__item" href="?days={{ days }}&tab=funnel" {% if not fproject %}aria-pressed="true"{% endif %}>Both projects</a>
-      {% for pid, name in fprojects.items %}<a class="seg__item" href="?days={{ days }}&tab=funnel&project={{ pid }}" {% if fproject == pid %}aria-pressed="true"{% endif %}>{{ name }}</a>{% endfor %}
-    </nav>
     <span class="t-meta">{{ f.total }} user{{ f.total|pluralize }}{% for name, n in f.by_project.items %} &middot; {{ name }} {{ n }}{% endfor %}</span>
   </div>
 

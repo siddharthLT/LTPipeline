@@ -61,13 +61,11 @@ def users(days):
     return data
 
 
-def build(accounts, days, project=None):
+def build(accounts, days):
     """Funnel rows, journey Sankey and the people who stopped at each rung."""
     by_domain = posthog.by_domain_of(accounts)
     people = []
     for (pid, email), seen in users(days).items():
-        if project and pid != project:
-            continue
         acct = posthog.match_account(email, by_domain)
         order = sorted(seen, key=lambda s: (seen[s], KEYS.index(s)))  # journey: the order each rung was first reached
         people.append({'email': email, 'pid': pid, 'account': acct, 'path': order, 'far': max(KEYS.index(s) for s in seen)})

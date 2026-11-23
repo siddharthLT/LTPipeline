@@ -553,5 +553,4 @@ class FunnelTests(TestCase):
             self.assertEqual([r['n'] for r in f['rows']], [3, 2, 2, 1, 1, 1])
             self.assertEqual(f['rows'][0]['stopped'], 1)
             self.assertTrue(f['sankey']['links'])
-            only = funnel.build([], 30, project=600726)
-            self.assertEqual(only['total'], 1)
+            self.assertEqual(f['total'], 3)
