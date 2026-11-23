@@ -1,0 +1,52 @@
+{% with f=funnel %}
+<section class="fn">
+  <div class="fn__filters">
+    <nav class="seg" aria-label="Project">
+      <a class="seg__item" href="?days={{ days }}&tab=funnel" {% if not fproject %}aria-pressed="true"{% endif %}>Both projects</a>
+      {% for pid, name in fprojects.items %}<a class="seg__item" href="?days={{ days }}&tab=funnel&project={{ pid }}" {% if fproject == pid %}aria-pressed="true"{% endif %}>{{ name }}</a>{% endfor %}
+    </nav>
+    <span class="t-meta">{{ f.total }} user{{ f.total|pluralize }}{% for name, n in f.by_project.items %} &middot; {{ name }} {{ n }}{% endfor %}</span>
+  </div>
+
+  {% if not f.total %}
+  <div class="card"><p class="t-body">No client users in this window for that selection.</p></div>
+  {% else %}
+  <div class="card fn__card">
+    <div class="uv__head"><h2 class="t-h3">How far users get</h2><span class="t-meta">Each user is counted at the furthest step they reached in the last {{ days }} days. "Of previous" is the share who made it from the step above.</span></div>
+    <ol class="fnl">
+      {% for r in f.rows %}<li class="fnl__row">
+        <div class="fnl__name"><strong>{{ r.label }}</strong><span class="t-meta">{{ r.hint }}</span></div>
+        <div class="fnl__bar" role="img" aria-label="{{ r.label }}: {{ r.n }} users, {{ r.pct }} percent"><i style="width: {{ r.width }}%"></i></div>
+        <div class="fnl__n mono"><b>{{ r.n }}</b><span>{{ r.pct }}%</span></div>
+        <div class="fnl__conv mono">{% if forloop.first %}<span class="t-meta">start</span>{% else %}{{ r.conv }}% <span class="t-meta">of previous</span>{% endif %}</div>
+      </li>{% endfor %}
+    </ol>
+  </div>
+
+  <div class="card fn__card">
+    <div class="uv__head"><h2 class="t-h3">The paths people take</h2><span class="t-meta">Columns are the order each user first reached a step. A grey bar is where their path ended.</span></div>
+    {% with s=f.sankey %}
+    <div class="fns__wrap"><svg class="fns" viewBox="0 0 {{ s.w }} {{ s.h|add:30 }}" role="img" aria-label="Journey Sankey from opening BioLens to outreach">
+      {% for h in s.heads %}<text class="fns__head" x="{{ h.x }}" y="12" text-anchor="middle">{{ h.text }}</text>{% endfor %}
+      <g transform="translate(0 24)">
+        {% for l in s.links %}<path class="fns__link fns--{{ l.step }}" d="{{ l.d }}" stroke-width="{{ l.w }}"><title>{{ l.title }}</title></path>{% endfor %}
+        {% for n in s.nodes %}<rect class="fns__node fns--{{ n.step }}" x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}"><title>{{ n.label }}: {{ n.n }}</title></rect>
+        <text class="fns__lbl" x="{{ n.tx }}" y="{{ n.ty }}" dy="0.35em">{{ n.label }} <tspan class="fns__num">{{ n.n }}</tspan></text>{% endfor %}
+      </g>
+    </svg></div>
+    {% endwith %}
+  </div>
+
+  <div class="card fn__card">
+    <div class="uv__head"><h2 class="t-h3">Who stopped where</h2><span class="t-meta">Users whose furthest step is this one: the follow-up list.</span></div>
+    <div class="usage__scroll"><table class="rules-table">
+      <thead><tr><th>Stopped at</th><th class="num">Users</th><th>Who</th></tr></thead>
+      <tbody>{% for r in f.rows %}{% if r.stopped %}<tr>
+        <td class="nowrap"><strong>{{ r.label }}</strong></td><td class="num">{{ r.stopped }}</td>
+        <td>{% for w in r.who %}<span class="fnw">{% if w.name %}<b>{{ w.name }}</b> {% endif %}<span class="t-meta mono">{{ w.email }}</span>{% if not fproject %} <span class="tag tag--type">{{ w.project }}</span>{% endif %}</span>{% endfor %}{% if r.more %} <span class="t-meta">and {{ r.more }} more</span>{% endif %}</td>
+      </tr>{% endif %}{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
+</section>
+{% endwith %}

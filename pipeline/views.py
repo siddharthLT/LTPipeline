@@ -389,7 +389,7 @@ def usage(request):
         days = 30
     days = days if days in (7, 14, 30, 90) else 30
     tab = request.GET.get('tab', 'overview')
-    tab = tab if tab in ('overview', 'accounts', 'recordings', 'users', 'daily', 'unmatched') else 'overview'
+    tab = tab if tab in ('overview', 'funnel', 'accounts', 'recordings', 'users', 'daily', 'unmatched') else 'overview'
     if request.GET.get('refresh'):
         from django.core.cache import cache
         cache.delete('posthog-usage-%d' % days)
@@ -411,6 +411,11 @@ def usage(request):
             ctx['shape'] = posthog.shape(rows, daily, days)
         if tab == 'recordings':
             ctx.update(_recordings_context(accounts, days))
+        if tab == 'funnel':
+            from . import funnel
+            project = int(request.GET['project']) if request.GET.get('project') in ('234813', '600726') else None
+            ctx.update(funnel=funnel.build(accounts, days, project), fproject=project or '',
+                       fprojects=funnel.PROJECTS)
     except posthog.NotConfigured as e:
         ctx['error'] = str(e)
     except Exception as e:  # network or PostHog errors should not break the page

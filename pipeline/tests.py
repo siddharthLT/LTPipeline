@@ -537,3 +537,21 @@ class MappedPipelineTests(TestCase):
         r = self.client.get('/mapped-universe/?pipe=in')
         self.assertContains(r, 'Acme Bio')
         self.assertNotContains(r, 'Other Co')
+
+
+class FunnelTests(TestCase):
+    def test_build_orders_paths_and_counts_furthest_step(self):
+        from datetime import datetime
+        from unittest import mock
+        from . import funnel
+        t = lambda m: datetime(2026, 1, 1, 0, m)
+        fake = {(234813, 'a@x.com'): {'visit': t(0), 'look': t(1), 'dig': t(2)},
+                (234813, 'b@x.com'): {'visit': t(0), 'look': t(3), 'work': t(4), 'reach': t(5)},
+                (600726, 'c@y.com'): {'visit': t(0)}}
+        with mock.patch.object(funnel, 'users', return_value=fake):
+            f = funnel.build([], 30)
+            self.assertEqual([r['n'] for r in f['rows']], [3, 2, 2, 1, 1, 1])
+            self.assertEqual(f['rows'][0]['stopped'], 1)
+            self.assertTrue(f['sankey']['links'])
+            only = funnel.build([], 30, project=600726)
+            self.assertEqual(only['total'], 1)

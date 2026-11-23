@@ -12,6 +12,7 @@
 <div class="usage__bar">
   <nav class="seg" aria-label="Usage views">
     <a class="seg__item" href="?days={{ days }}&tab=overview" {% if tab == 'overview' %}aria-pressed="true"{% endif %}>Overview</a>
+    <a class="seg__item" href="?days={{ days }}&tab=funnel" {% if tab == 'funnel' %}aria-pressed="true"{% endif %}>Action funnel</a>
     <a class="seg__item" href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-pressed="true"{% endif %}>Accounts</a>
     <a class="seg__item" href="?days={{ days }}&tab=recordings" {% if tab == 'recordings' %}aria-pressed="true"{% endif %}>Recordings</a>
     <a class="seg__item" href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-pressed="true"{% endif %}>Users</a>
@@ -39,6 +40,7 @@
 
 
 {% if tab == 'overview' %}{% include "pipeline/_usage_overview.html" %}
+{% elif tab == 'funnel' %}{% include "pipeline/_usage_funnel.html" %}
 {% elif tab == 'accounts' %}{% include "pipeline/_usage_accounts.html" %}
 {% elif tab == 'recordings' %}{% include "pipeline/_usage_recordings.html" %}
 {% else %}
