@@ -67,7 +67,8 @@ def build(accounts, days):
     people = []
     for (pid, email), seen in users(days).items():
         acct = posthog.match_account(email, by_domain)
-        order = sorted(seen, key=lambda s: (seen[s], KEYS.index(s)))  # journey: the order each rung was first reached
+        # journey: opening the app is always first, then the order each other rung was first reached
+        order = ['visit'] + sorted((s for s in seen if s != 'visit'), key=lambda s: (seen[s], KEYS.index(s)))
         people.append({'email': email, 'pid': pid, 'account': acct, 'path': order, 'far': max(KEYS.index(s) for s in seen)})
     total = len(people)
     reached = Counter()
@@ -92,7 +93,7 @@ def build(accounts, days):
             'by_project': dict(Counter(PROJECTS.get(p['pid'], str(p['pid'])) for p in people))}
 
 
-def sankey(paths, width=1000, height=340, node_w=14, pad=14, label_w=150):
+def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=170):
     """Lay out a left-to-right journey Sankey. Column i is the i-th rung a user first reached; 'stop' is where their path ends."""
     cols = len(KEYS)
     links = Counter()
@@ -109,8 +110,8 @@ def sankey(paths, width=1000, height=340, node_w=14, pad=14, label_w=150):
     order = KEYS + ['stop']
     maxnodes = max(sum(1 for (c, _) in nodes if c == i) for i in range(cols))
     scale = (height - pad * (maxnodes - 1)) / n_users
-    usable = width - label_w * 2
-    xs = [label_w + usable * i / (cols - 1) for i in range(cols)]
+    left = 16  # the last column's labels sit to its right, so it keeps label_w of room
+    xs = [left + (width - left - label_w) * i / (cols - 1) for i in range(cols)]
     pos = {}
     for c in range(cols):
         col = sorted([k for k in nodes if k[0] == c], key=lambda k: order.index(k[1]))
@@ -136,5 +137,5 @@ def sankey(paths, width=1000, height=340, node_w=14, pad=14, label_w=150):
         out_nodes.append({'x': round(p['x'], 1), 'y': round(p['y'], 1), 'h': round(max(p['h'], 1.5), 1), 'w': node_w, 'step': step,
                           'label': LABEL[step], 'n': nodes[(c, step)], 'tx': round(p['x'] + node_w + 8, 1),
                           'ty': round(p['y'] + max(p['h'], 1.5) / 2, 1)})
-    heads = [{'x': round(x, 1), 'text': 'Step %d' % i if i else 'Start'} for i, x in enumerate(xs)]
+    heads = [{'x': round(x - node_w / 2, 1), 'text': 'Step %d' % i if i else 'Start'} for i, x in enumerate(xs)]
     return {'w': width, 'h': height, 'nodes': out_nodes, 'links': out_links, 'heads': heads}

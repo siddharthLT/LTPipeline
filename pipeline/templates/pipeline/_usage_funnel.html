@@ -23,7 +23,7 @@
     <div class="uv__head"><h2 class="t-h3">The paths people take</h2><span class="t-meta">Columns are the order each user first reached a step. A grey bar is where their path ended.</span></div>
     {% with s=f.sankey %}
     <div class="fns__wrap"><svg class="fns" viewBox="0 0 {{ s.w }} {{ s.h|add:30 }}" role="img" aria-label="Journey Sankey from opening BioLens to outreach">
-      {% for h in s.heads %}<text class="fns__head" x="{{ h.x }}" y="12" text-anchor="middle">{{ h.text }}</text>{% endfor %}
+      {% for h in s.heads %}<text class="fns__head" x="{{ h.x }}" y="14" text-anchor="start">{{ h.text }}</text>{% endfor %}
       <g transform="translate(0 24)">
         {% for l in s.links %}<path class="fns__link fns--{{ l.step }}" d="{{ l.d }}" stroke-width="{{ l.w }}"><title>{{ l.title }}</title></path>{% endfor %}
         {% for n in s.nodes %}<rect class="fns__node fns--{{ n.step }}" x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}"><title>{{ n.label }}: {{ n.n }}</title></rect>
