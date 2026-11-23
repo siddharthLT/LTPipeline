@@ -364,6 +364,7 @@ def _title(moments, areas):
 
 def recordings(days):
     """Cached replay sessions for the window, each with the person, the pages it visited and a timeline of marks."""
+    days = min(days, REPLAY_RETENTION_DAYS)  # PostHog deletes footage after 30 days; scanning 90 days of events only makes the query time out (503)
     k = 'posthog-recordings-%d' % days
     data = cache.get(k)
     if data is not None:

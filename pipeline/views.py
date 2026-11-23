@@ -391,13 +391,15 @@ def usage(request):
     days = days if days in (7, 14, 30, 90) else 30
     tab = request.GET.get('tab', 'overview')
     tab = tab if tab in ('overview', 'funnel', 'accounts', 'recordings', 'users', 'daily', 'unmatched') else 'overview'
+    if tab == 'recordings':
+        days = min(days, posthog.REPLAY_RETENTION_DAYS)  # footage is deleted after 30 days, so there is no 90d view
     if request.GET.get('refresh'):
         from django.core.cache import cache
         cache.delete('posthog-usage-%d' % days)
-        cache.delete('posthog-recordings-%d' % days)
+        cache.delete('posthog-recordings-%d' % min(days, posthog.REPLAY_RETENTION_DAYS))
     accounts = list(Account.objects.prefetch_related('stage_progress'))
     ctx = {'nav': 'usage', 'days': days, 'tab': tab, 'actions': list(zip(posthog.SHORT, [l for _, l in posthog.ACTIONS])),
-           'windows': (7, 14, 30, 90)}
+           'windows': (7, 14, 30) if tab == 'recordings' else (7, 14, 30, 90)}
     from .models import UsageInsight
     ctx['insight'] = UsageInsight.objects.filter(tab=tab, days=days).first()
     try:
