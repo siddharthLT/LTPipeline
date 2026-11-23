@@ -456,18 +456,23 @@ class MappedUniverseTests(Base):
         r = self.client.get(self.url)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.context['page']), 50)
-        self.assertEqual(r.context['shown'], 69)
+        self.assertEqual(r.context['shown'], 70)
         self.assertContains(r, 'https://example.com/l.png')
         self.assertContains(r, 'logo__ini')
-        self.assertEqual(len(self.client.get(self.url + '?page=2').context['page']), 19)
+        self.assertEqual(len(self.client.get(self.url + '?page=2').context['page']), 20)
 
     def test_quick_filters(self):
         self.assertEqual(self.names(self.client.get(self.url + '?segment=CDMO')), ['Gamma CDMO'])
         self.assertEqual(sorted(self.names(self.client.get(self.url + '?segment=CDMO&segment=Reagents'))), ['Beta Reagents', 'Gamma CDMO'])
         self.assertEqual(self.names(self.client.get(self.url + '?region=Europe')), ['Gamma CDMO'])
-        self.assertEqual(self.names(self.client.get(self.url + '?region=Unknown')), ['Delta Packaging'])
+        self.assertEqual(sorted(self.names(self.client.get(self.url + '?region=Unknown'))), ['Delta Packaging', 'OneSource'])
         self.assertEqual(self.names(self.client.get(self.url + '?country=Germany')), ['Gamma CDMO'])
-        self.assertEqual(self.names(self.client.get(self.url + '?state=TX')), ['Beta Reagents'])
+        self.assertEqual(self.names(self.client.get(self.url + '?state=TX')), self.names(self.client.get(self.url)))  # ignored without a country
+        us = self.url + '?country=United States'
+        self.assertEqual(self.names(self.client.get(us + '&state=TX')), ['Beta Reagents'])
+        self.assertEqual(sorted(self.names(self.client.get(us + '&state=TX&state=MA'))), ['Alpha CRO', 'Beta Reagents'])
+        self.assertNotContains(self.client.get(self.url), 'US states')
+        self.assertContains(self.client.get(us), 'US states')
         self.assertEqual(self.names(self.client.get(self.url + '?q=berlin')), ['Gamma CDMO'])
         self.assertEqual(self.names(self.client.get(self.url + '?q=alpha.com')), ['Alpha CRO'])
         self.assertNotIn('Alpha CRO', self.names(self.client.get(self.url + '?logo=no')))
@@ -479,7 +484,7 @@ class MappedUniverseTests(Base):
         self.assertContains(r, 'mu-map')
         r = self.client.get(self.url + '?view=map')
         self.assertEqual(r.context['mapped'], 1)
-        self.assertEqual(r.context['not_mapped'], 68)
+        self.assertEqual(r.context['not_mapped'], 69)
         self.assertEqual(len(self.client.get(self.url + '?located=no').context['page']), 50)
 
     def test_suggest_dropdown(self):
@@ -505,3 +510,30 @@ class MappedUniverseTests(Base):
         self.assertEqual(root(host('https://www.Shilpabio.com/x')), 'shilpabio.com')
         self.assertEqual(root('bio.co.uk'), 'bio.co.uk')
         self.assertEqual(name_key('Acme Pharma, Inc.'), name_key('ACME'))
+
+
+class MappedPipelineTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('m@lunartree.bio', 'pw-123456')
+        self.client.force_login(self.user)
+
+    def test_new_account_joins_universe_once(self):
+        from .models import MappedCompany
+        a = Account.objects.create(name='Acme Bio', domain='acmebio.com', segment='cdmo')
+        self.assertEqual(MappedCompany.objects.filter(domain='acmebio.com').count(), 1)
+        from .models import ensure_mapped
+        ensure_mapped(a)
+        self.assertEqual(MappedCompany.objects.filter(domain='acmebio.com').count(), 1)
+
+    def test_list_marks_pipeline_and_filters(self):
+        from .models import MappedCompany
+        a = Account.objects.create(name='Acme Bio', domain='acmebio.com', segment='cdmo')
+        MappedCompany.objects.create(map_id=1, name='Other Co', domain='other.com', segment='CRO')
+        r = self.client.get('/mapped-universe/')
+        self.assertContains(r, 'Already in Pipeline')
+        self.assertContains(r, 'data-fill-domain="other.com"')
+        r = self.client.get('/mapped-universe/?pipe=out')
+        self.assertNotContains(r, 'Already in Pipeline')
+        r = self.client.get('/mapped-universe/?pipe=in')
+        self.assertContains(r, 'Acme Bio')
+        self.assertNotContains(r, 'Other Co')

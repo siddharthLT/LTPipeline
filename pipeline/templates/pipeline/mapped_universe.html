@@ -6,13 +6,14 @@
 {% block content %}
 <header class="thesis-head">
   <span class="eyebrow">Mapped universe</span>
-  <h1 class="t-h1">Relevant companies not in the pipeline</h1>
-  <p class="t-meta">{{ total }} CDMOs, CROs, reagent, equipment, packaging and instrument suppliers from the Company Map. Pharma, biotech and anything already in the pipeline are left out.</p>
+  <h1 class="t-h1">All Mapped Companies Relevant for BioLens</h1>
+  <p class="t-meta">{{ total }} CDMOs, CROs, reagent, equipment, packaging and instrument suppliers, whether we have spoken to them or not. <span class="mono">{{ in_pipe }}</span> are already in the pipeline (red on the map); add any other with the + button.</p>
 </header>
 
 <form method="get" class="mu__filters" data-autosubmit data-suggest-url="{% url 'pipeline:mapped_suggest' %}">
   {% for s in segs %}<input type="hidden" name="segment" value="{{ s }}">{% endfor %}
   {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
+  {% for s in states %}<input type="hidden" name="state" value="{{ s }}">{% endfor %}
   {% if view == 'map' %}<input type="hidden" name="view" value="map">{% endif %}
   <div class="mu__row">
     <label class="filters__search mu__search">
@@ -27,10 +28,11 @@
         {% for c in countries %}<option value="{{ c }}"{% if c == country %} selected{% endif %}>{{ c }}</option>{% endfor %}
       </select>
     </label>
-    <label class="mu__sel"><span class="sr-only">State</span>
-      <select name="state" class="field__input field__input--plain field__select" data-change-submit>
-        <option value="">All US states</option>
-        {% for s in states %}<option value="{{ s }}"{% if s == state %} selected{% endif %}>{{ s }}</option>{% endfor %}
+    <label class="mu__sel"><span class="sr-only">Pipeline</span>
+      <select name="pipe" class="field__input field__input--plain field__select" data-change-submit>
+        <option value="">All companies</option>
+        <option value="in"{% if pipe == 'in' %} selected{% endif %}>In pipeline</option>
+        <option value="out"{% if pipe == 'out' %} selected{% endif %}>Not in pipeline</option>
       </select>
     </label>
     <label class="chip chip--sm mu__logo"><input type="checkbox" name="logo" value="no" data-change-submit{% if logo == 'no' %} checked{% endif %}> No logo yet</label>
@@ -43,6 +45,9 @@
 </form>
 
 <div class="mu__chips" aria-label="Quick filters">
+  {% if country == 'United States' %}<div class="chips chips--scroll" aria-label="US states"><span class="t-meta">US states</span>
+    {% for s in state_chips %}<a class="chip chip--sm" href="?{{ s.qs }}" aria-pressed="{% if s.on %}true{% else %}false{% endif %}">{{ s.name }}</a>{% endfor %}
+  </div>{% endif %}
   <div class="chips chips--scroll">
     {% for r in regions %}<a class="chip chip--sm" href="?{{ r.qs }}" aria-pressed="{% if r.on %}true{% else %}false{% endif %}">{{ r.name }} <span class="chip__count">{{ r.n }}</span></a>{% endfor %}
   </div>
@@ -55,7 +60,7 @@
 <section class="card mu__card mu__mapcard">
   <p class="t-meta mu__count mono">{{ mapped }} on the map of {{ shown }}{% if shown != total %} (filtered from {{ total }}){% endif %}{% if not_mapped %} &middot; {{ not_mapped }} without a location <a href="?{{ unlocated_qs }}">{% if located == 'no' %}show all{% else %}list them{% endif %}</a>{% endif %}</p>
   <div id="mu-map" class="mu__map" role="application" aria-label="Map of companies"></div>
-  <p class="t-meta mu__legend"><span class="mu__dot"></span> exact address <span class="mu__dot mu__dot--approx"></span> approximate (city)</p>
+  <p class="t-meta mu__legend"><span class="mu__dot mu__dot--pipe"></span> in pipeline <span class="mu__dot"></span> exact address <span class="mu__dot mu__dot--approx"></span> approximate (city)</p>
 </section>
 {{ points|json_script:"mu-points" }}
 <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
@@ -65,7 +70,7 @@
 <section class="card mu__card">
   <p class="t-meta mu__count mono">{% if page.paginator.count %}{{ page.start_index }}–{{ page.end_index }} of {{ shown }}{% else %}0 of {{ total }}{% endif %}{% if shown != total %} (filtered from {{ total }}){% endif %}</p>
   <div class="usage__scroll mu__scroll"><table class="rules-table mu__table">
-    <thead><tr><th>Company</th><th>Website</th><th>Segment</th><th>Country</th><th>City</th></tr></thead>
+    <thead><tr><th>Company</th><th>Website</th><th>Segment</th><th>Country</th><th>City</th><th>Pipeline</th></tr></thead>
     <tbody>
     {% for c in page %}<tr>
       <td><span class="mu__name">{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}<span class="mu__nm">{{ c.name }}</span></span></td>
@@ -73,7 +78,8 @@
       <td><span class="tag tag--type">{{ c.segment }}</span></td>
       <td>{{ c.country|default:"·" }}</td>
       <td>{{ c.city|default:"·" }}{% if c.state and c.country == "United States" %}<span class="t-meta">, {{ c.state }}</span>{% endif %}</td>
-    </tr>{% empty %}<tr><td colspan="5">Nothing matches those filters.</td></tr>{% endfor %}
+      <td>{% if c.account_id %}<a class="mu__inpipe" href="{% url 'pipeline:account_detail' c.account_id %}">Already in Pipeline</a>{% else %}<button type="button" class="icon-btn icon-btn--sm mu__add" data-open-dialog="add-account" data-fill-name="{{ c.name }}" data-fill-domain="{{ c.domain }}" aria-label="Add {{ c.name }} to the pipeline" title="Add to pipeline"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5.25v13.5M5.25 12h13.5"/></svg></button>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="6">Nothing matches those filters.</td></tr>{% endfor %}
     </tbody>
   </table></div>
   {% if page.paginator.num_pages > 1 %}
@@ -85,4 +91,5 @@
   {% endif %}
 </section>
 {% endif %}
+{% include "partials/add_account_dialog.html" %}
 {% endblock %}

@@ -449,9 +449,11 @@ def mapped_suggest(request):
     if len(q) < 2:
         return JsonResponse({'results': []})
     qs = MappedCompany.objects.filter(Q(name__icontains=q) | Q(domain__icontains=q) | Q(city__icontains=q))
-    for key, field in (('region', 'world_region'), ('country', 'country'), ('state', 'state')):
+    for key, field in (('region', 'world_region'), ('country', 'country')):
         if request.GET.get(key):
             qs = qs.filter(**{field: request.GET[key]})
+    if request.GET.get('country') == 'United States' and request.GET.getlist('state'):
+        qs = qs.filter(state__in=request.GET.getlist('state'))
     if request.GET.getlist('segment'):
         qs = qs.filter(segment__in=request.GET.getlist('segment'))
     qs = qs.annotate(rank=Case(When(name__istartswith=q, then=Value(0)), When(name__icontains=q, then=Value(1)), default=Value(2),
@@ -463,7 +465,7 @@ def mapped_suggest(request):
 
 @login_required
 def mapped_universe(request):
-    """Mapped companies that are not in the pipeline, as a paginated list or a world map. Filters apply to both."""
+    """Every mapped company, in the pipeline or not, as a paginated list or a world map. Filters apply to both."""
     from django.core.paginator import Paginator
     from django.db.models import Count, Q
     from .models import WORLD_REGIONS, MappedCompany
@@ -473,12 +475,18 @@ def mapped_universe(request):
     view = 'map' if g.get('view') == 'map' else 'list'
     region = g.get('region', '')
     country = g.get('country', '')
-    state = g.get('state', '')
+    states = [s for s in g.getlist('state') if s] if country == 'United States' else []  # states only apply once United States is chosen
     logo = g.get('logo', '')
     located = g.get('located', '')
     focus = g.get('focus', '')
+    pipe = g.get('pipe', '') if g.get('pipe') in ('in', 'out') else ''
+    in_pipeline = dict(Account.objects.values_list('domain', 'pk'))  # a mapped company is in the pipeline when an account has its domain
     base = MappedCompany.objects.all()
     qs = base
+    if pipe == 'in':
+        qs = qs.filter(domain__in=in_pipeline)
+    elif pipe == 'out':
+        qs = qs.exclude(domain__in=in_pipeline)
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(domain__icontains=q) | Q(city__icontains=q) | Q(address__icontains=q) | Q(product_category__icontains=q))
     if segs:
@@ -487,16 +495,16 @@ def mapped_universe(request):
         qs = qs.filter(world_region=region)
     if country:
         qs = qs.filter(country=country)
-    if state:
-        qs = qs.filter(state=state)
+    if states:
+        qs = qs.filter(state__in=states)
     if logo == 'no':
         qs = qs.filter(logo_url='')
     if located == 'no':
         qs = qs.filter(latitude__isnull=True)
 
     def link(**over):
-        params = {'q': q, 'segment': segs, 'region': region, 'country': country, 'state': state, 'logo': logo,
-                  'located': located, 'view': 'map' if view == 'map' else ''}
+        params = {'q': q, 'segment': segs, 'region': region, 'country': country, 'state': states, 'logo': logo,
+                  'located': located, 'pipe': pipe, 'view': 'map' if view == 'map' else ''}
         params.update(over)
         return urlencode({k: v for k, v in params.items() if v}, doseq=True)
 
@@ -510,11 +518,12 @@ def mapped_universe(request):
     unlocated = base.filter(latitude__isnull=True).count()
     ctx = {
         'nav': 'mapped', 'view': view, 'total': base.count(), 'shown': qs.count(),
-        'q': q, 'segments': segments, 'regions': regions, 'region': region, 'country': country, 'state': state, 'logo': logo,
-        'located': located, 'unlocated': unlocated, 'unlocated_qs': link(located='' if located == 'no' else 'no', page=''),
+        'q': q, 'segments': segments, 'regions': regions, 'region': region, 'country': country, 'states': states, 'logo': logo,
+        'located': located, 'pipe': pipe, 'in_pipe': base.filter(domain__in=in_pipeline).count(), 'unlocated': unlocated, 'unlocated_qs': link(located='' if located == 'no' else 'no', page=''),
         'countries': list(base.exclude(country='').order_by('country').values_list('country', flat=True).distinct()),
-        'states': list(base.filter(country='United States').exclude(state='').order_by('state').values_list('state', flat=True).distinct()),
-        'segs': segs, 'clear': any([q, segs, region, country, state, logo, located]),
+        'state_chips': [{'name': s, 'on': s in states, 'qs': link(state=[x for x in states if x != s] if s in states else states + [s], page='', focus='')}
+                        for s in base.filter(country='United States').exclude(state='').order_by('state').values_list('state', flat=True).distinct()],
+        'segs': segs, 'clear': any([q, segs, region, country, states, logo, located, pipe]), 'form': AccountForm(),
         'list_qs': link(view=''), 'map_qs': link(view='map'),
         'page_size': MAPPED_PAGE,
     }
@@ -523,10 +532,14 @@ def mapped_universe(request):
             'id', 'name', 'domain', 'url', 'segment', 'city', 'state', 'country', 'address', 'latitude', 'longitude', 'geo_source', 'logo_url'))
         ctx.update(points=[{'id': p['id'], 'n': p['name'], 'd': p['domain'], 'u': p['url'], 's': p['segment'], 'c': p['city'], 'st': p['state'],
                             'co': p['country'], 'a': p['address'], 'la': round(p['latitude'], 5), 'ln': round(p['longitude'], 5),
-                            'g': p['geo_source'], 'l': p['logo_url']} for p in points],
+                            'g': p['geo_source'], 'l': p['logo_url'],
+                            'pp': reverse('pipeline:account_detail', args=[in_pipeline[p['domain']]]) if p['domain'] in in_pipeline else ''}
+                           for p in points],
                    mapped=len(points), not_mapped=ctx['shown'] - len(points), focus=focus)
     else:
         page = Paginator(qs.order_by('name'), MAPPED_PAGE).get_page(g.get('page'))
+        for c in page:
+            c.account_id = in_pipeline.get(c.domain)
         ctx.update(page=page, prev_qs=link(page=page.previous_page_number()) if page.has_previous() else '',
                    next_qs=link(page=page.next_page_number()) if page.has_next() else '')
     return render(request, 'pipeline/mapped_universe.html', ctx)

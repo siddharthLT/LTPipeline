@@ -2,6 +2,8 @@ import datetime
 from urllib.parse import urlparse
 
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from .stages import CRITERIA, PATH, STAGE_DAYS, STAGE_NAMES, STAGE_WEIGHTS, STAGES, USAGE_CHECKS
 
@@ -394,7 +396,8 @@ def world_region(country, us_region=''):
 
 
 class MappedCompany(models.Model):
-    """The mapped universe: CDMOs, CROs, reagent, equipment and packaging suppliers that are not in the pipeline."""
+    """The mapped universe: every relevant CDMO, CRO, reagent, equipment and packaging company, in the pipeline or not.
+    A company is in the pipeline when an Account has the same domain."""
     map_id = models.PositiveBigIntegerField(unique=True, help_text='id in the Company Map database this row came from')
     name = models.CharField(max_length=200)
     domain = models.CharField(max_length=253, blank=True, db_index=True)
@@ -423,3 +426,24 @@ class MappedCompany(models.Model):
 
     def __str__(self):
         return self.name
+
+
+PIPELINE_ID_BASE = 3_000_000_000  # map_id for pipeline accounts: base + account id (Company Map and sheet ids are lower)
+SEGMENT_LABELS = {'cdmo': 'CDMO', 'cro': 'CRO', 'reagents': 'Reagents', 'equipment': 'Equipment', 'other': 'Other'}
+
+
+def ensure_mapped(account):
+    """Make sure a pipeline account has a row in the mapped universe (matched on domain, so never twice)."""
+    existing = MappedCompany.objects.filter(domain=account.domain).first()
+    if existing:
+        return existing
+    return MappedCompany.objects.create(
+        map_id=PIPELINE_ID_BASE + account.pk, name=account.name, domain=account.domain, url='https://' + account.domain,
+        logo_url=account.logo_url, segment=SEGMENT_LABELS.get(account.segment, 'Other'), source='Pipeline',
+        world_region='Unknown')
+
+
+@receiver(post_save, sender=Account)
+def _mapped_for_new_account(sender, instance, created, **kwargs):
+    if created and instance.domain:
+        ensure_mapped(instance)

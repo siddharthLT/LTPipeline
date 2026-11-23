@@ -861,3 +861,12 @@ a.chip, a.chip:hover { text-decoration: none; }
 .mu__opt-txt { display: grid; min-width: 0; }
 .mu__opt-txt strong { font-size: var(--fs-label); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mu__sugg[hidden] { display: none; }
+
+.mu__dot--pipe { background: #C62828; box-shadow: 0 0 0 1px #C62828; }
+.mu-pin--pipe { background: #C62828; box-shadow: 0 0 0 1px #C62828; width: 16px; height: 16px; }
+.mu__inpipe { color: #1B7F3B; font-weight: 600; font-size: 13px; white-space: nowrap; text-decoration: none; }
+.mu__inpipe:hover { text-decoration: underline; }
+.mu__add { color: var(--teal-deep); border: 1px solid var(--teal-200); border-radius: 50%; }
+.mu-pop__pipe { display: inline-block; margin-top: 4px; color: #C62828; font-weight: 600; font-size: 12px; }
+.mu-cluster--pipe, .mu-cluster--pipe.mu-cluster--m, .mu-cluster--pipe.mu-cluster--l { background: #C62828; border-color: rgba(198, 40, 40, 0.35); }
+.mu-cluster--mixed, .mu-cluster--mixed.mu-cluster--m, .mu-cluster--mixed.mu-cluster--l { background: #12308F; border-color: rgba(18, 48, 143, 0.35); }

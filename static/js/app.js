@@ -6,6 +6,10 @@
     btn.addEventListener('click', function () {
       var d = document.getElementById(btn.dataset.openDialog);
       if (d && !d.open) {
+        if (btn.dataset.fillName !== undefined) {
+          d.querySelector('input[name=name]').value = btn.dataset.fillName;
+          d.querySelector('input[name=domain]').value = btn.dataset.fillDomain || '';
+        }
         d.showModal();
         var first = d.querySelector('input:not([type=hidden])');
         if (first) first.focus();

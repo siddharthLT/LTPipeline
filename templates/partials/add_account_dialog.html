@@ -1,0 +1,35 @@
+<dialog class="modal" id="add-account" aria-labelledby="add-account-title" {% if show_form %}data-open-on-load{% endif %}>
+  <form method="post" action="{% url 'pipeline:dashboard' %}" novalidate>
+    {% csrf_token %}
+    <div class="modal__head">
+      <div>
+        <span class="eyebrow">New account</span>
+        <h2 class="t-h2" id="add-account-title">Add Account</h2>
+      </div>
+      <button type="button" class="icon-btn icon-btn--sm" data-close-dialog aria-label="Close">
+        <svg class="ico ico-20" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <div>
+        <label class="field-label" for="{{ form.name.id_for_label }}">Company name</label>
+        <input class="field__input field__input--plain" type="text" name="name" id="{{ form.name.id_for_label }}" maxlength="200"
+               value="{{ form.name.value|default:'' }}" placeholder="Acme Biologics" autocomplete="off" required
+               {% if form.name.errors %}aria-invalid="true"{% endif %}>
+        {% for e in form.name.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="field-label" for="{{ form.domain.id_for_label }}">Company domain URL</label>
+        <input class="field__input field__input--plain" type="text" name="domain" id="{{ form.domain.id_for_label }}"
+               value="{{ form.domain.value|default:'' }}" placeholder="acmebio.com" autocomplete="off" inputmode="url" required
+               {% if form.domain.errors %}aria-invalid="true"{% endif %}>
+        {% for e in form.domain.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+        <p class="field-help">Paste a full URL or just the domain.</p>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--quiet" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn--primary">Add Account</button>
+    </div>
+  </form>
+</dialog>
