@@ -1,8 +1,12 @@
 {% with f=funnel %}
 <section class="fn">
   <div class="fn__filters">
-    <span class="t-meta">{{ f.total }} user{{ f.total|pluralize }}{% for name, n in f.by_project.items %} &middot; {{ name }} {{ n }}{% endfor %}</span>
+    <span class="t-meta">{% if f.picked %}<strong>{{ f.picked.name }}</strong> &middot; {% endif %}{{ f.total }} user{{ f.total|pluralize }}{% for name, n in f.by_project.items %} &middot; {{ name }} {{ n }}{% endfor %}</span>
+    {% if f.picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=funnel">Reset</a>{% endif %}
   </div>
+  {% if f.chips %}<nav class="fn__chips" aria-label="Show one company">
+    {% for c in f.chips %}<a class="fn__chip" href="?days={{ days }}&tab=funnel&account={{ c.pk }}" {% if f.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
+  </nav>{% endif %}
 
   {% if not f.total %}
   <div class="card"><p class="t-body">No client users in this window for that selection.</p></div>

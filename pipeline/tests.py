@@ -555,6 +555,21 @@ class FunnelTests(TestCase):
             self.assertTrue(f['sankey']['links'])
             self.assertEqual(f['total'], 3)
 
+    def test_build_filters_to_one_account(self):
+        from datetime import datetime
+        from unittest import mock
+        from . import funnel
+        a = Account.objects.create(name='Acme', domain='x.com')
+        Account.objects.create(name='Other', domain='y.com')
+        t = lambda m: datetime(2026, 1, 1, 0, m)
+        fake = {(234813, 'a@x.com'): {'visit': t(0), 'look': t(1)}, (600726, 'c@y.com'): {'visit': t(0)}}
+        accounts = list(Account.objects.all())
+        with mock.patch.object(funnel, 'users', return_value=fake):
+            self.assertEqual({c['name'] for c in funnel.build(accounts, 30)['chips']}, {'Acme', 'Other'})
+            f = funnel.build(accounts, 30, a.pk)
+            self.assertEqual((f['total'], f['picked'].pk), (1, a.pk))
+            self.assertEqual(funnel.build(accounts, 30, 99999)['total'], 2)
+
 
 class LiveUsersTests(Base):
     def setUp(self):

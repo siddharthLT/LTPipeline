@@ -889,6 +889,11 @@ a.chip, a.chip:hover { text-decoration: none; }
 /* Action funnel */
 .fn { display: grid; gap: var(--s-4); }
 .fn__filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.fn__chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.fn__chip, .fn__chip:hover { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--canvas); color: var(--ink-2); font-size: var(--fs-meta); text-decoration: none; }
+.fn__chip:hover { border-color: var(--teal-deep); color: var(--teal-deep); }
+.fn__chip[aria-pressed="true"] { background: var(--teal-deep); border-color: var(--teal-deep); color: #fff; }
+.fn__chipn { opacity: 0.7; font-variant-numeric: tabular-nums; }
 .fn__card { padding: var(--s-4); }
 .fnl { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; gap: var(--s-3); }
 .fnl__row { display: grid; grid-template-columns: minmax(180px, 1.1fr) 3fr 80px 130px; align-items: center; gap: var(--s-4); }

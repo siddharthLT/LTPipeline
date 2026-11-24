@@ -65,8 +65,8 @@ def users(days):
     return data
 
 
-def build(accounts, days):
-    """Funnel rows, journey Sankey and the people who stopped at each rung."""
+def build(accounts, days, account_id=None):
+    """Funnel rows, journey Sankey and the people who stopped at each rung. account_id limits everything to one tracker account."""
     by_domain = posthog.by_domain_of(accounts)
     people = []
     for (pid, email), seen in users(days).items():
@@ -74,6 +74,14 @@ def build(accounts, days):
         # journey: opening the app is always first, then the order each other rung was first reached
         order = ['visit'] + sorted((s for s in seen if s != 'visit'), key=lambda s: (seen[s], KEYS.index(s)))
         people.append({'email': email, 'pid': pid, 'account': acct, 'path': order, 'far': max(KEYS.index(s) for s in seen)})
+    chips = Counter()  # who has users in the window, so the filter only offers companies with something to show
+    for p in people:
+        if p['account']:
+            chips[p['account']] += 1
+    chips = sorted(chips.items(), key=lambda kv: (-kv[1], kv[0].name))
+    picked = next((a for a, _ in chips if a.pk == account_id), None)
+    if picked:
+        people = [p for p in people if p['account'] and p['account'].pk == picked.pk]
     total = len(people)
     reached = Counter()
     for p in people:
@@ -94,7 +102,7 @@ def build(accounts, days):
                      'who': [{'email': p['email'], 'name': p['account'].name if p['account'] else '', 'pid': p['pid'],
                               'project': PROJECTS.get(p['pid'], str(p['pid']))} for p in who[:10]], 'more': max(len(who) - 10, 0)})
     top_paths = Counter(' > '.join(LABEL[s] for s in p['path']) for p in people).most_common(8)
-    return {'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
+    return {'chips': [{'pk': a.pk, 'name': a.name, 'n': n} for a, n in chips], 'picked': picked, 'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
             'by_project': dict(Counter(PROJECTS.get(p['pid'], str(p['pid'])) for p in people))}
 
 

@@ -418,7 +418,11 @@ def usage(request):
             ctx.update(_recordings_context(accounts, days))
         if tab == 'funnel':
             from . import funnel
-            ctx.update(funnel=funnel.build(accounts, days))
+            try:
+                pick = int(request.GET.get('account', ''))
+            except ValueError:
+                pick = None
+            ctx.update(funnel=funnel.build(accounts, days, pick))
     except posthog.NotConfigured as e:
         ctx['error'] = str(e)
     except Exception as e:  # network or PostHog errors should not break the page
