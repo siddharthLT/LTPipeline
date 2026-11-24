@@ -390,7 +390,7 @@ def usage(request):
         days = 30
     days = days if days in (7, 14, 30, 90) else 30
     tab = request.GET.get('tab', 'overview')
-    tab = tab if tab in ('overview', 'funnel', 'accounts', 'recordings', 'users', 'daily', 'unmatched') else 'overview'
+    tab = tab if tab in ('overview', 'funnel', 'accounts', 'recordings', 'digests', 'users', 'daily', 'unmatched') else 'overview'
     if tab == 'recordings':
         days = min(days, posthog.REPLAY_RETENTION_DAYS)  # footage is deleted after 30 days, so there is no 90d view
     if request.GET.get('refresh'):
@@ -416,6 +416,9 @@ def usage(request):
             ctx['shape'] = posthog.shape(rows, daily, days)
         if tab == 'recordings':
             ctx.update(_recordings_context(accounts, days))
+        if tab == 'digests':
+            from . import digests
+            ctx.update(dg=digests.build(accounts, days))
         if tab == 'funnel':
             from . import funnel
             try:

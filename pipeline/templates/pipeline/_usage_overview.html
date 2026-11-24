@@ -1,3 +1,4 @@
+{% load pipeline_extras %}
 {% with sh=shape %}
 <section class="uv">
   <div class="card uv__pulse">
@@ -38,7 +39,7 @@
     <div class="uv__head"><h2 class="t-h3">Most active accounts</h2><span class="t-meta">Days active, then the daily strip</span></div>
     <ol class="top">
       {% for m in sh.cards|slice:":6" %}<li>
-        <a href="{% url 'pipeline:account_detail' m.account.pk %}" class="top__name">{{ m.account.name }}</a>
+        <a href="{% account_url m.account.pk %}" class="top__name">{{ m.account.name }}</a>
         <span class="heat heat--mini" style="--n: {{ m.strip|length }}" aria-hidden="true">{% for c in m.strip %}<i class="heat__c heat__c--{{ c.lvl }}"></i>{% endfor %}</span>
         <span class="top__n mono">{{ m.active_days }}d</span>
       </li>{% empty %}<li class="t-meta">No tracker account has usage in this window.</li>{% endfor %}

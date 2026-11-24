@@ -1,4 +1,6 @@
 from django import template
+from django.conf import settings
+from django.urls import NoReverseMatch, reverse
 
 register = template.Library()
 
@@ -40,3 +42,12 @@ def ago(when):
     if secs < 86400:
         return '%dh ago' % (secs // 3600)
     return '%dd ago' % (secs // 86400)
+
+
+@register.simple_tag
+def account_url(pk):
+    """An account's page. Product usage deployed on its own has no account pages, so it links to the pipeline deployment."""
+    try:
+        return reverse('pipeline:account_detail', args=[pk])
+    except NoReverseMatch:
+        return '%s/accounts/%s/' % (settings.PIPELINE_URL, pk) if settings.PIPELINE_URL else '#'

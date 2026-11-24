@@ -1,3 +1,4 @@
+{% load pipeline_extras %}
 {% with sh=shape %}
 <p class="t-meta uacc__key">Each cell is a day, {{ sh.first }} to {{ sh.last }}. Darker means more page views and events that day. Accounts are ordered by days active.
   <span class="heat__legend" aria-hidden="true"><i class="heat__c heat__c--0"></i><i class="heat__c heat__c--1"></i><i class="heat__c heat__c--2"></i><i class="heat__c heat__c--3"></i><i class="heat__c heat__c--4"></i></span></p>
@@ -5,7 +6,7 @@
   {% for m in sh.cards %}
   <article class="card ucard">
     <header class="ucard__head">
-      <a class="ucard__name" href="{% url 'pipeline:account_detail' m.account.pk %}">{{ m.account.name }}</a>
+      <a class="ucard__name" href="{% account_url m.account.pk %}">{{ m.account.name }}</a>
       <span class="tag tag--type">Step {{ m.account.furthest_stage }}</span>
     </header>
     <div class="heat" style="--n: {{ m.strip|length }}" role="img" aria-label="{{ m.active_days }} active days">
@@ -32,7 +33,7 @@
 {% if quiet %}
 <details class="card ucard__quiet">
   <summary>No activity yet <span class="seg__count">{{ quiet|length }}</span> <span class="t-meta">tracker accounts with nobody seen in BioLens in this window</span></summary>
-  <div class="tags">{% for a in quiet %}<a class="tag tag--outline" href="{% url 'pipeline:account_detail' a.pk %}">{{ a.name }}{% if a.furthest_stage %} <span class="mono">· step {{ a.furthest_stage }}</span>{% endif %}</a>{% endfor %}</div>
+  <div class="tags">{% for a in quiet %}<a class="tag tag--outline" href="{% account_url a.pk %}">{{ a.name }}{% if a.furthest_stage %} <span class="mono">· step {{ a.furthest_stage }}</span>{% endif %}</a>{% endfor %}</div>
 </details>
 {% endif %}
 {% endwith %}

@@ -88,6 +88,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'pipeline.context.app_mode',
                 'pipeline.context.pending_actions',
             ],
         },
@@ -167,7 +168,17 @@ MAILERS = {
 # Auth
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'pipeline:dashboard'
+# One codebase, up to two Vercel projects. APP_MODE picks what a deployment serves:
+#   all      everything (the default, so a deployment without the variable behaves as before)
+#   pipeline the pipeline tracker only
+#   usage    Product usage only
+APP_MODE = os.environ.get('APP_MODE', 'all').strip().lower()
+if APP_MODE not in ('all', 'pipeline', 'usage'):
+    raise ValueError("APP_MODE must be 'all', 'pipeline' or 'usage', not %r" % APP_MODE)
+# Where the other deployment lives (no trailing slash), so each app can link across, e.g. usage -> an account page.
+PIPELINE_URL = os.environ.get('PIPELINE_URL', '').rstrip('/')
+USAGE_URL = os.environ.get('USAGE_URL', '').rstrip('/')
+LOGIN_REDIRECT_URL = 'pipeline:usage' if APP_MODE == 'usage' else 'pipeline:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 STATICFILES_DIRS = [BASE_DIR / 'static']

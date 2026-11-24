@@ -45,7 +45,7 @@
           <p class="rec__who clamp-1" title="{{ r.email }}">{{ r.name|default:r.email }}</p>
           <p class="rec__meta mono">{{ r.start|ago }} · {{ r.active|spent }} active · {{ r.clicks }} click{{ r.clicks|pluralize }}</p>
           <div class="tags rec__tags">
-            {% if r.account %}<a class="tag tag--type" href="{% url 'pipeline:account_detail' r.account.pk %}">{{ r.account.name }}</a>{% else %}<span class="tag tag--outline">Not in tracker</span>{% endif %}
+            {% if r.account %}<a class="tag tag--type" href="{% account_url r.account.pk %}">{{ r.account.name }}</a>{% else %}<span class="tag tag--outline">Not in tracker</span>{% endif %}
             {% for d in r.did|slice:":2" %}<span class="tag tag--outline">{{ d }}</span>{% endfor %}
             {% if not r.did %}{% for a in r.areas|slice:":2" %}<span class="tag tag--outline">{{ a }}</span>{% endfor %}{% endif %}
           </div>

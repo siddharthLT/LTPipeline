@@ -9,12 +9,13 @@
   <p class="t-meta">Live from PostHog, joined to tracker accounts by email domain (the domain on each account). Internal @lunartree.bio users are left out.</p>
 </header>
 
-<div class="usage__bar">
-  <nav class="seg" aria-label="Usage views" data-live-url="{% url 'pipeline:usage_live' %}">
+<div class="usage__bar{% if usage_only %} usage__bar--side{% endif %}">
+  <nav class="seg" aria-label="Usage views"{% if not usage_only %} data-live-url="{% url 'pipeline:usage_live' %}"{% endif %}>
     <a class="seg__item" href="?days={{ days }}&tab=overview" {% if tab == 'overview' %}aria-pressed="true"{% endif %}>Overview</a>
     <a class="seg__item" href="?days={{ days }}&tab=funnel" {% if tab == 'funnel' %}aria-pressed="true"{% endif %}>Action funnel</a>
     <a class="seg__item" href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-pressed="true"{% endif %}>Accounts</a>
-    <a class="seg__item" href="?days={{ days }}&tab=recordings" {% if tab == 'recordings' %}aria-pressed="true"{% endif %}>Recordings<span class="live" hidden><i class="live__dot"></i><b class="live__n"></b><span class="live__pop" role="status"></span></span></a>
+    <a class="seg__item" href="?days={{ days }}&tab=recordings" {% if tab == 'recordings' %}aria-pressed="true"{% endif %}>Recordings{% if not usage_only %}<span class="live" hidden><i class="live__dot"></i><b class="live__n"></b><span class="live__pop" role="status"></span></span>{% endif %}</a>
+    <a class="seg__item" href="?days={{ days }}&tab=digests" {% if tab == 'digests' %}aria-pressed="true"{% endif %}>Digest health</a>
     <a class="seg__item" href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-pressed="true"{% endif %}>Users</a>
     <a class="seg__item" href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-pressed="true"{% endif %}>Daily</a>
     <a class="seg__item" href="?days={{ days }}&tab=unmatched" {% if tab == 'unmatched' %}aria-pressed="true"{% endif %}>Not in tracker{% if unmatched %} <span class="seg__count">{{ unmatched|length }}</span>{% endif %}</a>
@@ -45,6 +46,7 @@
 {% elif tab == 'funnel' %}{% include "pipeline/_usage_funnel.html" %}
 {% elif tab == 'accounts' %}{% include "pipeline/_usage_accounts.html" %}
 {% elif tab == 'recordings' %}{% include "pipeline/_usage_recordings.html" %}
+{% elif tab == 'digests' %}{% include "pipeline/_usage_digests.html" %}
 {% else %}
 <section class="card usage__card">
 {% if tab == 'users' %}
@@ -52,7 +54,7 @@
     <thead><tr><th>User</th><th>Account</th><th>Tier</th><th class="num">Sessions</th><th class="num">Features</th><th class="num">Pages</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th>Last seen</th></tr></thead>
     <tbody>{% for u in users %}<tr>
       <td>{{ u.name|default:u.email }}<br><span class="t-meta mono">{{ u.email }}</span></td>
-      <td><a href="{% url 'pipeline:account_detail' u.account.pk %}">{{ u.account.name }}</a></td>
+      <td><a href="{% account_url u.account.pk %}">{{ u.account.name }}</a></td>
       <td><span class="tier tier--{{ u.tier|lower }}">{{ u.tier }}</span></td><td class="num">{{ u.sessions }}</td><td class="num">{{ u.feats }}</td><td class="num">{{ u.pvs }}</td><td class="num">{{ u.acts }}</td><td class="num">{{ u.ai }}</td><td class="num">{{ u.rage }}</td><td class="nowrap">{{ u.last_seen|slice:":10" }}</td>
     </tr>{% empty %}<tr><td colspan="10">No matched users in this window.</td></tr>{% endfor %}</tbody>
   </table></div>
@@ -65,7 +67,7 @@
     <tbody>
       <tr class="usage__dayrow"><th colspan="{{ actions|length|add:4 }}">{{ day }} <span class="t-meta">&middot; {{ items|length }} user{{ items|length|pluralize }}</span></th></tr>
       {% for d in items %}{% if d.account %}<tr>
-        <td class="mono clip" title="{{ d.email }}">{{ d.email }}</td><td><a href="{% url 'pipeline:account_detail' d.account.pk %}">{{ d.account.name }}</a></td><td class="num">{{ d.pvs }}</td>
+        <td class="mono clip" title="{{ d.email }}">{{ d.email }}</td><td><a href="{% account_url d.account.pk %}">{{ d.account.name }}</a></td><td class="num">{{ d.pvs }}</td>
         {% for c in d.counts %}<td class="num">{% if c %}<strong>{{ c }}</strong>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>{% endfor %}<td class="num"><strong>{{ d.total }}</strong></td>
       </tr>{% endif %}{% endfor %}
     </tbody>

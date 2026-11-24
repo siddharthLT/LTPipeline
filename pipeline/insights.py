@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 
 from . import funnel, posthog
 
-TABS = ('overview', 'funnel', 'accounts', 'recordings', 'users', 'daily', 'unmatched')
+TABS = ('overview', 'funnel', 'accounts', 'recordings', 'digests', 'users', 'daily', 'unmatched')
 SECTIONS = [('highlights', 'Key highlights'), ('insights', 'General insights'), ('outliers', 'Outliers'), ('risks', 'Risks')]
 
 SCOPE = {
@@ -15,6 +15,7 @@ SCOPE = {
     'funnel': 'only the action funnel: step-by-step conversion, where users drop off, the biggest losses, the common paths people take, and which accounts have users stuck at which step. Do not comment on overall activity, engagement tiers or individual users beyond who is stuck where',
     'accounts': 'account-level usage: which tracker accounts are using BioLens, how much, how deeply, and which accounts with a high deal stage are quiet',
     'recordings': 'only session recordings: how long sessions are, how active, which areas and moments appear, rage clicks and errors, and which accounts or sessions stand out. Do not comment on funnel, tiers or overall usage',
+    'digests': 'only the scheduled digest emails: which accounts received them, which were skipped and why (opted out, no companies), and which recipients have never opened BioLens. Do not comment on in-app usage beyond whether a recipient has ever opened it',
     'users': 'individual users: engagement tiers, who is a power user, who has stopped, and unusual patterns per person',
     'daily': 'the day-by-day rhythm: busiest and quietest days, spikes, gaps and which accounts drive them',
     'unmatched': 'users whose email domain does not match a tracker account: who they are, how much they use it and whether any should be added to the pipeline',
@@ -39,6 +40,14 @@ def payload(tab, accounts, days):
                            'users_whose_furthest_step_is_this': r['stopped'],
                            'who_stopped_here': [(w['name'] or 'not in tracker') + ' (' + w['project'] + ')' for w in r['who']]} for r in f['rows']],
                 'most_common_paths_with_user_counts': f['top_paths']}
+    if tab == 'digests':
+        from . import digests
+        d = digests.build(accounts, days)
+        return {'job_runs_in_window': d['run_days'], 'accounts_receiving_digests': d['receiving_accounts'], 'people_receiving': d['people_receiving'],
+                'recipients_who_never_opened_biolens': d['never_opened_people'], 'accounts_where_nobody_ever_opened_biolens': d['digest_only_accounts'],
+                'per_account': [{'account': c['account'].name, 'furthest_stage': c['account'].furthest_stage, 'sent': c['sent'], 'skipped': c['skipped'],
+                                 'recipients': c['receiving'], 'never_opened': c['never'], 'latest_run_sent': c['last'] == 'ok'} for c in d['cards']],
+                'accounts_with_no_digest': [a.name for a in d['without']]}
     rows, unmatched, daily, totals = posthog.join(accounts, days)
     using = {m['account'].pk for m in rows}
     user = lambda u: {'name': u['name'] or 'unnamed', 'tier': u['tier'], 'sessions': u['sessions'], 'features_used': u['feats'], 'pages': u['pvs'],

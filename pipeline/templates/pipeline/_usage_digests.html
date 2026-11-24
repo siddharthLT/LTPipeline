@@ -1,0 +1,47 @@
+{% load pipeline_extras %}
+{% with d=dg %}
+<p class="t-meta dg__key">
+  <span class="dg__legend"><i class="dg__dot dg__dot--ok"></i> digest sent</span>
+  <span class="dg__legend"><i class="dg__dot dg__dot--bad"></i> not sent (skipped or no digest)</span>
+  One dot per day the digest job ran{% if d.run_days %} ({{ d.run_days }} run{{ d.run_days|pluralize }}, {{ d.first }} to {{ d.last_run }}){% endif %}. A person who gets the email has not necessarily opened BioLens: "never opened" means no page view, ever.
+</p>
+{% if not d.cards %}
+<section class="card"><p class="t-body">No digest emails in this window.</p></section>
+{% else %}
+<section class="usage__stats">
+  <div class="card usage__stat"><span class="t-meta">Accounts getting a digest</span><strong>{{ d.receiving_accounts }} of {{ tracked }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">People receiving it</span><strong>{{ d.people_receiving }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Never opened BioLens</span><strong>{{ d.never_opened_people }}</strong></div>
+  <div class="card usage__stat"><span class="t-meta">Accounts where nobody has</span><strong>{{ d.digest_only_accounts }}</strong></div>
+</section>
+<section class="dgs">
+  {% for c in d.cards %}
+  <article class="card dgc">
+    <header class="dgc__head">
+      <a class="dgc__name" href="{% account_url c.account.pk %}">{{ c.account.name }}</a>
+      <span class="tag tag--type">Step {{ c.account.furthest_stage }}</span>
+      {% if c.receiving and c.never == c.receiving %}<span class="tag tag--outline">Digest only, nobody has opened BioLens</span>{% endif %}
+      <span class="t-meta mono dgc__tot">{{ c.sent }} sent &middot; {{ c.skipped }} skipped</span>
+    </header>
+    <div class="dg__strip" role="img" aria-label="{{ c.sent }} digests sent, {{ c.skipped }} skipped">
+      {% for s in c.strip %}<i class="dg__dot dg__dot--{{ s.state }}" title="{{ s.tip }}"></i>{% endfor %}
+    </div>
+    <ul class="dgc__people">
+      {% for p in c.people %}<li>
+        <i class="dg__dot dg__dot--{{ p.state }}" title="{% if p.state == 'ok' %}Latest digest sent{% else %}Latest digest not sent{% if p.why %}: {{ p.why }}{% endif %}{% endif %}"></i>
+        <span class="mono dgc__mail">{{ p.email }}</span>
+        <span class="t-meta">{{ p.sent }} sent{% if p.skipped %}, {{ p.skipped }} skipped{% if p.why %} ({{ p.why }}){% endif %}{% endif %}{% if p.last_sent %} &middot; last {{ p.last_sent }}{% endif %}</span>
+        <span class="dgc__open mono{% if not p.opened %} is-never{% endif %}">{% if p.opened %}opened {{ p.opened }}{% else %}never opened{% endif %}</span>
+      </li>{% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+</section>
+{% if d.without %}
+<details class="card ucard__quiet">
+  <summary>No digest in this window <span class="seg__count">{{ d.without|length }}</span> <span class="t-meta">tracker accounts with nobody on the digest list</span></summary>
+  <div class="tags">{% for a in d.without %}<a class="tag tag--outline" href="{% account_url a.pk %}">{{ a.name }}{% if a.furthest_stage %} <span class="mono">· step {{ a.furthest_stage }}</span>{% endif %}</a>{% endfor %}</div>
+</details>
+{% endif %}
+{% endif %}
+{% endwith %}

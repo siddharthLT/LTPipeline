@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Log in · Lunartree{% endblock %}
+{% block title %}Log in · Lunartree {% if usage_only %}Usage{% else %}Pipeline{% endif %}{% endblock %}
 {% block body %}
-<div class="auth">
+<div class="auth auth--split">
+  <div class="auth__side">
   <div class="auth__card">
     <div class="brand auth__brand">
       <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="32" height="32">
-      <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+      <span class="brand__name">Lunartree <span class="sep">/</span> {% if usage_only %}Usage{% else %}Pipeline{% endif %}</span>
     </div>
     <div class="auth__head">
       <span class="eyebrow">Sign in</span>
@@ -38,5 +39,23 @@
       <button type="submit" class="btn btn--primary btn--block">Log in</button>
     </form>
   </div>
+  </div>
+  {% if usage_only %}
+  <aside class="authviz authviz--usage" aria-label="Product usage preview">
+    <div class="authviz__cap"><span class="eyebrow">Product usage</span><p class="authviz__t">See who is using BioLens, and how far they get.</p></div>
+    <div class="uviz" data-usageviz></div>
+  </aside>
+  {% else %}
+  <aside class="authviz authviz--globe" aria-label="A globe of biotech hubs">
+    <div class="authviz__stage" data-globe data-dots="{% static 'js/land-dots.json' %}"></div>
+    <div class="authviz__cap authviz__cap--low"><span class="eyebrow">Pipeline</span><p class="authviz__t">Every account, every signal, in one view.</p></div>
+  </aside>
+  {% endif %}
 </div>
+{% if usage_only %}
+<script src="{% static 'js/login-usage.js' %}" defer></script>
+{% else %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="{% static 'js/login-globe.js' %}" defer></script>
+{% endif %}
 {% endblock %}

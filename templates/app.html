@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
 {% block body %}
-<div class="shell" data-shell>
+<div class="shell{% if usage_only %} shell--solo{% endif %}" data-shell>
   <aside class="sidenav">
     <a class="brand" href="{% url 'pipeline:dashboard' %}">
       <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
-      <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+      <span class="brand__name">Lunartree <span class="sep">/</span> {% if usage_only %}Usage{% else %}Pipeline{% endif %}</span>
     </a>
+    {% if usage_only %}{% include "pipeline/_usage_sidenav.html" %}{% else %}
     <button type="button" class="searchbtn" data-open-palette aria-label="Search accounts">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
       <span>Search</span><kbd class="kbd" data-kbd>Ctrl K</kbd>
@@ -24,10 +25,12 @@
         <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3.5-4 3 2.5L20 7"/></svg>
         Usage playbook
       </a>
+{% if show_usage %}
       <a class="navitem" href="{% url 'pipeline:usage' %}" {% if nav == 'usage' %}aria-current="page"{% endif %}>
         <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
         Product usage
       </a>
+{% endif %}
       <a class="navitem" href="{% url 'pipeline:mapped_universe' %}" {% if nav == 'mapped' %}aria-current="page"{% endif %}>
         <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5Z"/></svg>
         Mapped universe
@@ -41,6 +44,7 @@
         Scoring rules
       </a>
     </nav>
+    {% endif %}
     <div class="sidenav__foot">
       <div class="who">
         <span class="avatar avatar--sm">{{ user.email|slice:":1"|upper }}</span>
@@ -57,9 +61,9 @@
     <header class="appbar" data-appbar>
       <a class="brand" href="{% url 'pipeline:dashboard' %}">
         <img class="brand__mark" src="{% static 'img/mark.svg' %}" alt="" width="28" height="28">
-        <span class="brand__name">Lunartree <span class="sep">/</span> Pipeline</span>
+        <span class="brand__name">Lunartree <span class="sep">/</span> {% if usage_only %}Usage{% else %}Pipeline{% endif %}</span>
       </a>
-      <button type="button" class="icon-btn" data-open-palette aria-label="Search accounts"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button>
+      {% if show_pipeline %}<button type="button" class="icon-btn" data-open-palette aria-label="Search accounts"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button>{% endif %}
       <form method="post" action="{% url 'accounts:logout' %}" class="appbar__end">
         {% csrf_token %}
         <button type="submit" class="btn btn--quiet btn--sm">Log out</button>
@@ -70,7 +74,7 @@
     </main>
   </div>
 
-  <aside class="actionbar" aria-label="Pending actions">
+  {% if show_pipeline %}<aside class="actionbar" aria-label="Pending actions">
     <div class="actionbar__head">
       <h2 class="actionbar__t">Pending actions <span class="actionbar__n mono">{{ pending_actions|length }}</span></h2>
       <button type="button" class="icon-btn icon-btn--sm" data-actionbar-toggle aria-expanded="true" aria-label="Collapse pending actions">
@@ -95,13 +99,13 @@
       <p class="t-muted t-meta">No pending actions. Add them from an account page.</p>
       {% endif %}
     </div>
-  </aside>
+  </aside>{% endif %}
 </div>
-<dialog class="palette" id="palette" data-search-url="{% url 'pipeline:search' %}" aria-label="Search">
+{% if show_pipeline %}<dialog class="palette" id="palette" data-search-url="{% url 'pipeline:search' %}" aria-label="Search">
   <div class="palette__box">
     <input type="search" class="palette__input" id="palette-q" placeholder="Search accounts, or jump to a page" autocomplete="off" aria-label="Search accounts">
     <ul class="palette__list" id="palette-list" role="listbox"></ul>
     <p class="palette__foot mono"><span>&uarr;&darr; move</span><span>&crarr; open</span><span>esc close</span></p>
   </div>
-</dialog>
+</dialog>{% endif %}
 {% endblock %}

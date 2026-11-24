@@ -571,6 +571,121 @@ class FunnelTests(TestCase):
             self.assertEqual(funnel.build(accounts, 30, 99999)['total'], 2)
 
 
+class DigestHealthTests(Base):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+
+    def data(self):
+        rows = [('Ann@onesource.com', '2026-11-23', 'digest_email_sent', None, 1), ('ann@onesource.com', '2026-11-24', 'digest_email_sent', None, 1),
+                ('bob@onesource.com', '2026-11-23', 'digest_email_sent', None, 1), ('bob@onesource.com', '2026-11-24', 'digest_email_skipped', 'user_opted_out', 1),
+                ('x@nowhere.org', '2026-11-24', 'digest_email_sent', None, 1)]
+        return {'rows': rows, 'opened': {'ann@onesource.com': '2026-11-20T00:00:00Z'}}
+
+    def test_build_marks_sent_and_skipped_and_never_opened(self):
+        from unittest import mock
+        from . import digests
+        with mock.patch.object(digests, 'data', return_value=self.data()):
+            d = digests.build([self.account], 30)
+        c = d['cards'][0]
+        self.assertEqual((c['sent'], c['skipped'], c['receiving'], c['never']), (3, 1, 2, 1))
+        self.assertEqual([s['state'] for s in c['strip']], ['ok', 'ok'])
+        people = {p['email']: p for p in c['people']}
+        self.assertEqual((people['ann@onesource.com']['state'], people['bob@onesource.com']['state']), ('ok', 'bad'))
+        self.assertEqual(people['bob@onesource.com']['why'], 'opted out')
+        self.assertEqual(people['bob@onesource.com']['opened'], '')
+        self.assertEqual(d['run_days'], 2)
+
+    def test_tab_renders(self):
+        from unittest import mock
+        from . import digests
+        with mock.patch.object(digests, 'data', return_value=self.data()):
+            r = self.client.get(reverse('pipeline:usage') + '?tab=digests')
+        self.assertContains(r, 'never opened')
+        self.assertContains(r, 'dg__dot--bad')
+
+    def test_digest_events_never_count_as_activity(self):
+        from . import posthog
+        self.assertIn("event NOT LIKE 'digest_email%'", posthog._where(30))
+
+
+class AppModeTests(Base):
+    """One codebase, two deployments: APP_MODE decides what each one serves."""
+
+    def serve(self, mode):
+        import importlib
+        import sys
+        from django.test import override_settings
+        from django.urls import clear_url_caches
+        ctx = override_settings(APP_MODE=mode, LOGIN_REDIRECT_URL='pipeline:usage' if mode == 'usage' else 'pipeline:dashboard')
+        ctx.enable()
+        self.addCleanup(self.restore, ctx)
+        clear_url_caches()
+        importlib.reload(sys.modules['pipeline.urls'])
+        importlib.reload(sys.modules['config.urls'])
+
+    def restore(self, ctx):
+        import importlib
+        import sys
+        from django.urls import clear_url_caches
+        ctx.disable()
+        clear_url_caches()
+        importlib.reload(sys.modules['pipeline.urls'])
+        importlib.reload(sys.modules['config.urls'])
+
+    def usage_page(self, tab='overview'):
+        from unittest import mock
+        from . import posthog
+        totals = {'users': 0, 'matched_users': 0, 'evts': 0, 'acts': 0, 'ai': 0, 'rage': 0}
+        with mock.patch.object(posthog, 'join', return_value=([], [], [], totals)):
+            return self.client.get('/usage/?tab=' + tab)
+
+    def test_usage_deployment_serves_only_usage(self):
+        self.serve('usage')
+        self.assertRedirects(self.client.get('/'), '/usage/', fetch_redirect_response=False)
+        r = self.usage_page()
+        self.assertContains(r, 'shell--solo')
+        self.assertContains(r, 'Digest health')  # the views are in the sidebar
+        self.assertContains(r, 'sidewin')  # and so is the window
+        self.assertNotContains(r, 'Pending actions')
+        self.assertNotContains(r, 'Scoring rules')
+        for url in ('/actions/', '/rules/', '/health-check/', '/playbook/', '/mapped-universe/', '/accounts/%d/' % self.account.pk):
+            self.assertEqual(self.client.get(url).status_code, 404, url)
+
+    def test_usage_deployment_links_accounts_to_the_pipeline_deployment(self):
+        from django.test import override_settings
+        self.serve('usage')
+        from django.template import Context, Template
+        out = lambda: Template('{% load pipeline_extras %}{% account_url 7 %}').render(Context())
+        self.assertEqual(out(), '#')
+        with override_settings(PIPELINE_URL='https://pipe.example.com'):
+            self.assertEqual(out(), 'https://pipe.example.com/accounts/7/')
+
+    def test_pipeline_deployment_has_no_usage(self):
+        self.serve('pipeline')
+        r = self.client.get('/')
+        self.assertNotContains(r, 'Product usage')
+        self.assertContains(r, 'Scoring rules')
+        self.assertEqual(self.client.get('/usage/').status_code, 404)
+        self.assertEqual(self.client.get('/usage/live.json').status_code, 404)
+
+    def test_default_deployment_serves_everything(self):
+        self.serve('all')
+        self.assertContains(self.client.get('/'), 'Product usage')
+        self.assertEqual(self.usage_page().status_code, 200)
+        self.assertNotContains(self.usage_page(), 'shell--solo')
+
+    def test_login_pictures_differ(self):
+        self.client.logout()
+        self.serve('usage')
+        self.assertContains(self.client.get('/accounts/login/'), 'data-usageviz')
+        self.serve('pipeline')
+        r = self.client.get('/accounts/login/')
+        self.assertContains(r, 'data-globe')
+        self.assertNotContains(r, 'data-usageviz')
+
+
 class LiveUsersTests(Base):
     def setUp(self):
         super().setUp()

@@ -76,7 +76,8 @@ def hql_all(query):
 
 def _where(days):
     return ("timestamp >= now() - INTERVAL %d DAY AND person.properties.email IS NOT NULL "
-            "AND person.properties.email LIKE '%%@%%' AND person.properties.email NOT LIKE '%%@lunartree.bio'" % days)
+            "AND person.properties.email LIKE '%%@%%' AND person.properties.email NOT LIKE '%%@lunartree.bio' "
+            "AND event NOT LIKE 'digest_email%%'" % days)  # the digest job writes events for people who never opened the app
 
 
 def user_rows(days):
