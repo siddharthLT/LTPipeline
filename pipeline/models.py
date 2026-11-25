@@ -1,4 +1,5 @@
 import datetime
+import re
 from urllib.parse import urlparse
 
 from django.db import models
@@ -426,6 +427,69 @@ class MappedCompany(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class MappedPerson(models.Model):
+    """A person at a mapped company, copied from the Company Map's contact database.
+    Kept by the company's domain as well as the row, so the person is still found when the company joins the pipeline
+    (its mapped row can be replaced then) and shows under 'Other people in company' on the buying thesis."""
+    company = models.ForeignKey(MappedCompany, null=True, blank=True, on_delete=models.SET_NULL, related_name='people')
+    domain = models.CharField(max_length=253, blank=True, db_index=True, help_text="The company's domain, as on the mapped row")
+    source_id = models.PositiveBigIntegerField(unique=True, help_text='id of the person in the Company Map database')
+    name = models.CharField(max_length=200)
+    title = models.CharField(max_length=300, blank=True)
+    email = models.EmailField(max_length=254, blank=True)
+    phone = models.CharField(max_length=60, blank=True)
+    linkedin_url = models.URLField(max_length=500, blank=True)
+    role = models.CharField(max_length=30, blank=True, help_text='decision_maker, champion, influencer or end_user, when known')
+    warm_via = models.CharField(max_length=200, blank=True, help_text='Who on our side knows them, comma separated (a warm connection when set)')
+
+    ROLE_ORDER = {'decision_maker': 0, 'champion': 1, 'influencer': 2, 'end_user': 3}
+    ROLE_LABELS = {'decision_maker': 'Decision maker', 'champion': 'Champion', 'influencer': 'Influencer', 'end_user': 'End user'}
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'mapped people'
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def role_label(self):
+        return self.ROLE_LABELS.get(self.role, '')
+
+    @property
+    def warm_names(self):
+        return [x.strip() for x in self.warm_via.split(',') if x.strip()]
+
+    @property
+    def tel(self):
+        return re.sub(r'[^0-9+]', '', self.phone)
+
+
+def people_for(domain, company=None, hide_text=''):
+    """People at a company, found by its row and by its domain. Named people already written into hide_text (matched on email or full name) are left out.
+    Warm connections come first, then those with a role."""
+    from django.db.models import Q
+    keys = set()
+    if domain:
+        d = re.sub(r'^https?://', '', domain.strip().lower())
+        d = re.sub(r'^www\.', '', d).split('/')[0]
+        parts = d.split('.')
+        keys |= {d, '.'.join(parts[-3:]) if len(parts) >= 3 and parts[-2] in ('co', 'com', 'org') else '.'.join(parts[-2:])}
+    q = Q(domain__in=keys) if keys else Q(pk__in=[])
+    if company is not None:
+        q |= Q(company=company)
+    out, seen, text = [], set(), (hide_text or '').lower()
+    for person in MappedPerson.objects.filter(q).order_by('name'):
+        if person.pk in seen:
+            continue
+        seen.add(person.pk)
+        if text and ((person.email and person.email.lower() in text) or (len(person.name) >= 5 and person.name.lower() in text)):
+            continue
+        out.append(person)
+    out.sort(key=lambda x: (not x.warm_via, MappedPerson.ROLE_ORDER.get(x.role, 9), x.name.lower()))
+    return out
 
 
 PIPELINE_ID_BASE = 3_000_000_000  # map_id for pipeline accounts: base + account id (Company Map and sheet ids are lower)

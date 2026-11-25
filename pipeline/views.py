@@ -92,6 +92,13 @@ def search_index(request):
     return JsonResponse({'accounts': rows})
 
 
+def _other_people(account):
+    """People at the company from the Company Map, minus anyone the thesis already names as buyer, champion or user."""
+    from .models import MappedCompany, people_for
+    named = ' '.join([account.buyer, account.champion, account.users, account.who_cares])
+    return people_for(account.domain, MappedCompany.objects.filter(domain=account.domain).first(), named)
+
+
 @login_required
 def account_detail(request, pk):
     account = get_object_or_404(Account.objects.prefetch_related('stage_progress', 'tasks'), pk=pk)
@@ -114,6 +121,7 @@ def account_detail(request, pk):
         'nav': 'pipeline',
         'circumference': 439.82,
         'score_dash': round(account.score / 100 * 439.82, 1),
+        'other_people': _other_people(account),
     })
 
 
@@ -500,6 +508,21 @@ MAPPED_PAGE = 50
 
 
 @login_required
+def mapped_company(request, pk):
+    """One mapped company: its details and the people we know there. A company already in the pipeline shows them on its buying thesis instead."""
+    from django.shortcuts import redirect
+    from .models import MappedCompany, people_for
+    company = get_object_or_404(MappedCompany, pk=pk)
+    account = Account.objects.filter(domain=company.domain).first() if company.domain else None
+    if account:
+        return redirect(reverse('pipeline:account_detail', args=[account.pk]) + '#other-people')
+    people = people_for(company.domain, company)
+    return render(request, 'pipeline/mapped_company.html', {
+        'nav': 'mapped', 'company': company, 'people': people, 'warm_count': sum(1 for x in people if x.warm_via), 'form': AccountForm(),
+        'place': ', '.join(x for x in (company.city, company.state if company.country == 'United States' else '', company.country) if x)})
+
+
+@login_required
 def mapped_suggest(request):
     """Up to eight mapped companies matching what is being typed, for the search dropdown."""
     from django.db.models import Case, IntegerField, Q, Value, When
@@ -539,6 +562,7 @@ def mapped_universe(request):
     located = g.get('located', '')
     focus = g.get('focus', '')
     pipe = g.get('pipe', '') if g.get('pipe') in ('in', 'out') else ''
+    warm = g.get('warm', '') == '1'
     in_pipeline = dict(Account.objects.values_list('domain', 'pk'))  # a mapped company is in the pipeline when an account has its domain
     base = MappedCompany.objects.all()
     qs = base
@@ -546,6 +570,9 @@ def mapped_universe(request):
         qs = qs.filter(domain__in=in_pipeline)
     elif pipe == 'out':
         qs = qs.exclude(domain__in=in_pipeline)
+    if warm:
+        from .models import MappedPerson
+        qs = qs.filter(pk__in=MappedPerson.objects.exclude(warm_via='').exclude(company=None).values('company_id'))
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(domain__icontains=q) | Q(city__icontains=q) | Q(address__icontains=q) | Q(product_category__icontains=q))
     if segs:
@@ -563,7 +590,7 @@ def mapped_universe(request):
 
     def link(**over):
         params = {'q': q, 'segment': segs, 'region': region, 'country': country, 'state': states, 'logo': logo,
-                  'located': located, 'pipe': pipe, 'view': 'map' if view == 'map' else ''}
+                  'located': located, 'pipe': pipe, 'warm': '1' if warm else '', 'view': 'map' if view == 'map' else ''}
         params.update(over)
         return urlencode({k: v for k, v in params.items() if v}, doseq=True)
 
@@ -578,11 +605,11 @@ def mapped_universe(request):
     ctx = {
         'nav': 'mapped', 'view': view, 'total': base.count(), 'shown': qs.count(),
         'q': q, 'segments': segments, 'regions': regions, 'region': region, 'country': country, 'states': states, 'logo': logo,
-        'located': located, 'pipe': pipe, 'in_pipe': base.filter(domain__in=in_pipeline).count(), 'unlocated': unlocated, 'unlocated_qs': link(located='' if located == 'no' else 'no', page=''),
+        'located': located, 'pipe': pipe, 'warm': warm, 'n_warm': base.filter(people__warm_via__gt='').distinct().count(), 'in_pipe': base.filter(domain__in=in_pipeline).count(), 'unlocated': unlocated, 'unlocated_qs': link(located='' if located == 'no' else 'no', page=''),
         'countries': list(base.exclude(country='').order_by('country').values_list('country', flat=True).distinct()),
         'state_chips': [{'name': s, 'on': s in states, 'qs': link(state=[x for x in states if x != s] if s in states else states + [s], page='', focus='')}
                         for s in base.filter(country='United States').exclude(state='').order_by('state').values_list('state', flat=True).distinct()],
-        'segs': segs, 'clear': any([q, segs, region, country, states, logo, located, pipe]), 'form': AccountForm(),
+        'segs': segs, 'clear': any([q, segs, region, country, states, logo, located, pipe, warm]), 'form': AccountForm(),
         'list_qs': link(view=''), 'map_qs': link(view='map'),
         'page_size': MAPPED_PAGE,
     }
@@ -592,11 +619,12 @@ def mapped_universe(request):
         ctx.update(points=[{'id': p['id'], 'n': p['name'], 'd': p['domain'], 'u': p['url'], 's': p['segment'], 'c': p['city'], 'st': p['state'],
                             'co': p['country'], 'a': p['address'], 'la': round(p['latitude'], 5), 'ln': round(p['longitude'], 5),
                             'g': p['geo_source'], 'l': p['logo_url'],
-                            'pp': reverse('pipeline:account_detail', args=[in_pipeline[p['domain']]]) if p['domain'] in in_pipeline else ''}
+                            'pp': reverse('pipeline:account_detail', args=[in_pipeline[p['domain']]]) if p['domain'] in in_pipeline else '',
+                            'mp': reverse('pipeline:mapped_company', args=[p['id']])}
                            for p in points],
                    mapped=len(points), not_mapped=ctx['shown'] - len(points), focus=focus)
     else:
-        page = Paginator(qs.order_by('name'), MAPPED_PAGE).get_page(g.get('page'))
+        page = Paginator(qs.annotate(n_people=Count('people', distinct=True), n_warm=Count('people', filter=~Q(people__warm_via=''), distinct=True)).order_by('name'), MAPPED_PAGE).get_page(g.get('page'))
         for c in page:
             c.account_id = in_pipeline.get(c.domain)
         ctx.update(page=page, prev_qs=link(page=page.previous_page_number()) if page.has_previous() else '',

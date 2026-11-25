@@ -35,6 +35,7 @@
         <option value="out"{% if pipe == 'out' %} selected{% endif %}>Not in pipeline</option>
       </select>
     </label>
+    <label class="chip chip--sm mu__warm"><input type="checkbox" name="warm" value="1" data-change-submit{% if warm %} checked{% endif %}> Warm connection companies <span class="mono">{{ n_warm }}</span></label>
     <label class="chip chip--sm mu__logo"><input type="checkbox" name="logo" value="no" data-change-submit{% if logo == 'no' %} checked{% endif %}> No logo yet</label>
     <div class="mu__toggle" role="group" aria-label="View">
       <a class="mu__tbtn" href="?{{ list_qs }}" aria-pressed="{% if view == 'list' %}true{% else %}false{% endif %}">List</a>
@@ -70,16 +71,17 @@
 <section class="card mu__card">
   <p class="t-meta mu__count mono">{% if page.paginator.count %}{{ page.start_index }}–{{ page.end_index }} of {{ shown }}{% else %}0 of {{ total }}{% endif %}{% if shown != total %} (filtered from {{ total }}){% endif %}</p>
   <div class="usage__scroll mu__scroll"><table class="rules-table mu__table">
-    <thead><tr><th>Company</th><th>Website</th><th>Segment</th><th>Country</th><th>City</th><th>Pipeline</th></tr></thead>
+    <thead><tr><th>Company</th><th>Website</th><th>Segment</th><th>Country</th><th>City</th><th class="num">People</th><th>Pipeline</th></tr></thead>
     <tbody>
     {% for c in page %}<tr>
-      <td><span class="mu__name">{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}<span class="mu__nm">{{ c.name }}</span></span></td>
+      <td><span class="mu__name">{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}<a class="mu__nm{% if c.n_warm %} mu__nm--warm{% endif %}" href="{% url 'pipeline:mapped_company' c.pk %}"{% if c.n_warm %} title="{{ c.n_warm }} warm connection{{ c.n_warm|pluralize }}"{% endif %}>{{ c.name }}</a></span></td>
       <td>{% if c.domain or c.url %}<a class="mono mu__dom" href="{% if c.url %}{{ c.url }}{% else %}https://{{ c.domain }}{% endif %}" target="_blank" rel="noopener">{{ c.domain|default:c.url }}</a>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>
       <td><span class="tag tag--type">{{ c.segment }}</span></td>
       <td>{{ c.country|default:"·" }}</td>
       <td>{{ c.city|default:"·" }}{% if c.state and c.country == "United States" %}<span class="t-meta">, {{ c.state }}</span>{% endif %}</td>
+      <td class="num">{% if c.n_people %}<span class="mono">{{ c.n_people }}</span>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>
       <td>{% if c.account_id %}<a class="mu__inpipe" href="{% url 'pipeline:account_detail' c.account_id %}">Already in Pipeline</a>{% else %}<button type="button" class="icon-btn icon-btn--sm mu__add" data-open-dialog="add-account" data-fill-name="{{ c.name }}" data-fill-domain="{{ c.domain }}" aria-label="Add {{ c.name }} to the pipeline" title="Add to pipeline"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5.25v13.5M5.25 12h13.5"/></svg></button>{% endif %}</td>
-    </tr>{% empty %}<tr><td colspan="6">Nothing matches those filters.</td></tr>{% endfor %}
+    </tr>{% empty %}<tr><td colspan="7">Nothing matches those filters.</td></tr>{% endfor %}
     </tbody>
   </table></div>
   {% if page.paginator.num_pages > 1 %}

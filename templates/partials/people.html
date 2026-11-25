@@ -1,0 +1,20 @@
+{% comment %}People at a company. LinkedIn and Email are buttons; a phone number, when we have one, is a call button.{% endcomment %}
+<ul class="ppl">
+  {% for p in people %}
+  <li class="ppl__row">
+    <span class="avatar avatar--sm" aria-hidden="true">{{ p.name|slice:":1"|upper }}</span>
+    <div class="ppl__who">
+      <strong class="ppl__name">{{ p.name }}{% if p.warm_via %} <span class="ppl__warm">Warm connection</span>{% for w in p.warm_names %}<span class="ppl__via">via {{ w }}</span>{% endfor %}{% endif %}</strong>
+      <span class="t-meta ppl__title">{{ p.title|default:"No title" }}{% if p.role_label %} <span class="tag tag--outline ppl__role">{{ p.role_label }}</span>{% endif %}</span>
+    </div>
+    <div class="ppl__acts">
+      {% if p.linkedin_url %}<a class="btn btn--ghost btn--sm ppl__btn" href="{{ p.linkedin_url }}" target="_blank" rel="noopener noreferrer" title="{{ p.name }} on LinkedIn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M5.2 8.4H2.4V21h2.8V8.4ZM3.8 3a1.65 1.65 0 1 0 0 3.3 1.65 1.65 0 0 0 0-3.3ZM21.6 14c0-3.4-1.8-5.8-4.9-5.8-1.5 0-2.6.8-3.1 1.6V8.4h-2.7V21h2.8v-6.6c0-1.6.7-2.8 2.2-2.8 1.4 0 2.1 1 2.1 2.8V21h2.8l.8-7Z"/></svg>LinkedIn</a>{% else %}<span></span>{% endif %}
+      {% if p.email %}<a class="btn btn--ghost btn--sm ppl__btn" href="mailto:{{ p.email }}" title="Email {{ p.email }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></svg>Email</a>{% else %}<span></span>{% endif %}
+      {% if p.tel %}<a class="icon-btn icon-btn--sm ppl__call" href="tel:{{ p.tel }}" title="Call {{ p.phone }}" aria-label="Call {{ p.name }} on {{ p.phone }}">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5h3.2l1.6 4-2 1.3a10.5 10.5 0 0 0 5.4 5.4l1.3-2 4 1.6V18a1.5 1.5 0 0 1-1.5 1.5C10.8 19.5 4.5 13.2 4.5 6A1.5 1.5 0 0 1 6 4.5Z"/></svg></a>{% endif %}
+    </div>
+  </li>
+  {% empty %}<li class="t-muted t-meta">No one named here yet.</li>{% endfor %}
+</ul>

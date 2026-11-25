@@ -32,6 +32,7 @@
     var html = '<div class="mu-pop">' + logo + '<div><strong>' + esc(p.n) + '</strong><span class="mu-pop__seg">' + esc(p.s) + '</span></div></div>' +
       '<p class="mu-pop__addr">' + esc(p.g === 'city' ? place + ' (approximate)' : (p.a || place)) + '</p>' +
       (p.pp ? '<a class="mu-pop__pipe" href="' + esc(p.pp) + '">In pipeline &middot; open account</a><br>' : '') +
+      (p.mp ? '<a class="mu-pop__link" href="' + esc(p.mp) + '">People and details</a><br>' : '') +
       (site ? '<a class="mu-pop__link" href="' + esc(site) + '" target="_blank" rel="noopener">' + esc(p.d || site) + '</a>' : '');
     cluster.addLayer(L.marker([p.la, p.ln], { icon: pin(p), title: p.n, pipe: !!p.pp }).bindPopup(html, { minWidth: 250, maxWidth: 300 }));
     bounds.push([p.la, p.ln]);

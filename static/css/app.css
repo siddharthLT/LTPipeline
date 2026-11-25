@@ -1059,3 +1059,26 @@ a.chip, a.chip:hover { text-decoration: none; }
   .uviz__area { animation: none; opacity: 1; }
   .authviz__stage canvas { transition: none; }
 }
+
+/* ---- people at a company: mapped company page and "Other people" on the buying thesis ---- */
+.ppl { list-style: none; margin: 0; padding: 0; display: grid; }
+.ppl__row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.ppl__row:last-child { border-bottom: 0; }
+.ppl__who { display: grid; gap: 2px; min-width: 0; }
+.ppl__name { font-weight: 600; }
+.ppl__title { overflow-wrap: anywhere; }
+.ppl__role { margin-left: 6px; }
+.ppl__acts { display: grid; grid-template-columns: 104px 88px 34px; align-items: center; gap: var(--s-2); }
+.ppl__btn { gap: 6px; justify-content: center; }
+.ppl__call { color: var(--teal-deep); border: 1px solid var(--teal-200); border-radius: 50%; }
+.mc__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-4); margin: 0; }
+.mc__facts dt { font-size: var(--fs-label); color: var(--ink-2); }
+.mc__facts dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.mc__cat { margin: 0; }
+@media (max-width: 640px) { .ppl__row { grid-template-columns: 32px minmax(0, 1fr); } .ppl__acts { grid-column: 2; justify-content: start; } }
+
+/* warm connections: red, by request */
+.ppl__warm { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #D92D20; color: #fff; font-size: 12px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
+.ppl__via { display: inline-block; margin-left: 4px; padding: 0 8px; border-radius: 999px; border: 1px solid #D92D20; color: #B42318; font-size: 12px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
+.mu__nm--warm, .mu__nm--warm:hover { color: #D92D20; }
+.mu__warm:has(input:checked) { border-color: #D92D20; color: #B42318; }

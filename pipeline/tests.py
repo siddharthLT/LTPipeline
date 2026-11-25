@@ -610,6 +610,75 @@ class DigestHealthTests(Base):
         self.assertIn("event NOT LIKE 'digest_email%'", posthog._where(30))
 
 
+class MappedPeopleTests(Base):
+    def setUp(self):
+        super().setUp()
+        from .models import MappedCompany, MappedPerson
+        self.co = MappedCompany.objects.create(map_id=5, name='Zeta Labs', domain='zeta.com', segment='CRO', city='Boston', country='United States', state='MA')
+        self.ann = MappedPerson.objects.create(company=self.co, domain='zeta.com', source_id=1, name='Ann Lee', title='VP Sales', email='ann@zeta.com',
+                                               phone='+1 (555) 010-2000', linkedin_url='https://linkedin.com/in/ann', role='champion')
+        self.bob = MappedPerson.objects.create(company=self.co, domain='zeta.com', source_id=2, name='Bob Ray', email='bob@zeta.com')
+
+    def test_company_page_lists_people_with_buttons(self):
+        r = self.client.get(reverse('pipeline:mapped_company', args=[self.co.pk]))
+        self.assertContains(r, 'Zeta Labs')
+        self.assertContains(r, 'Ann Lee')
+        self.assertContains(r, 'href="https://linkedin.com/in/ann"')
+        self.assertContains(r, 'href="mailto:ann@zeta.com"')
+        self.assertContains(r, 'href="tel:+15550102000"')  # a call button only where there is a number
+        self.assertNotContains(r, 'tel:' + 'None')
+        self.assertContains(r, 'Add to pipeline')
+
+    def test_warm_connections_are_tagged_and_filterable(self):
+        from .models import MappedCompany
+        self.ann.warm_via = 'Vedant, PK'
+        self.ann.save()
+        cold = MappedCompany.objects.create(map_id=6, name='Cold Co', domain='cold.com', segment='CRO')
+        r = self.client.get(reverse('pipeline:mapped_company', args=[self.co.pk]))
+        self.assertContains(r, 'Warm connection', count=2)  # the company tag and Ann's tag
+        self.assertContains(r, 'via Vedant')
+        self.assertContains(r, 'via PK')
+        self.assertContains(self.client.get(reverse('pipeline:mapped_universe')), 'mu__nm mu__nm--warm', count=1)
+        r = self.client.get(reverse('pipeline:mapped_universe') + '?warm=1')
+        self.assertContains(r, 'Zeta Labs')
+        self.assertNotContains(r, 'Cold Co')
+
+    def test_company_in_pipeline_goes_to_its_thesis(self):
+        a = Account.objects.create(name='Zeta', domain='zeta.com')
+        r = self.client.get(reverse('pipeline:mapped_company', args=[self.co.pk]))
+        self.assertRedirects(r, reverse('pipeline:account_detail', args=[a.pk]) + '#other-people', fetch_redirect_response=False)
+
+    def test_thesis_shows_other_people_and_hides_those_already_named(self):
+        a = Account.objects.create(name='Zeta', domain='zeta.com', champion='Ann Lee, VP Sales')
+        r = self.client.get(reverse('pipeline:account_detail', args=[a.pk]))
+        self.assertContains(r, 'Other people in company')
+        self.assertContains(r, 'Bob Ray')
+        self.assertNotContains(r, 'ann@zeta.com')  # already named as the champion
+
+    def test_people_follow_a_company_that_joins_the_pipeline_even_if_its_row_goes(self):
+        from .models import MappedCompany
+        a = Account.objects.create(name='Zeta', domain='zeta.com')
+        MappedCompany.objects.filter(pk=self.co.pk).delete()  # the old row can be replaced when a company joins
+        self.assertContains(self.client.get(reverse('pipeline:account_detail', args=[a.pk])), 'Bob Ray')
+
+    def test_import_command_adds_reliable_people_once(self):
+        from io import StringIO
+        from unittest import mock
+        from django.core.management import call_command
+        from .management.commands import import_mapped_people as cmd
+        from .models import MappedPerson
+        rows = [dict(id=10, name='Cy Dee', title='CEO', email='Cy@Zeta.com', phone='', linkedin='linkedin.com/in/cy', role='', company_id=5, site='zeta.com'),
+                dict(id=11, name='Cy Dee', title='CEO', email='cy@zeta.com', phone='', linkedin='', role='', company_id=5, site='zeta.com'),  # same person twice
+                dict(id=12, name='Lost Co', title='', email='x@nowhere.org', phone='', linkedin='', role='', company_id=99, site='nowhere.org')]
+        with mock.patch.object(cmd, 'fetch', return_value=rows):
+            call_command('import_mapped_people', stdout=StringIO())
+            call_command('import_mapped_people', stdout=StringIO())  # re-running adds nothing
+        cy = MappedPerson.objects.get(source_id=10)
+        self.assertEqual((cy.email, cy.linkedin_url, cy.company_id), ('cy@zeta.com', 'https://linkedin.com/in/cy', self.co.pk))
+        self.assertFalse(MappedPerson.objects.filter(source_id__in=[11, 12]).exists())
+        self.assertEqual(MappedPerson.objects.count(), 3)
+
+
 class AppModeTests(Base):
     """One codebase, two deployments: APP_MODE decides what each one serves."""
 

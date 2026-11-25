@@ -37,6 +37,7 @@
     <li><a href="#stages" class="toc__a"><span class="mono">5</span>Stage tracker</a></li>
     <li><a href="#meetings" class="toc__a"><span class="mono">6</span>Meeting notes</a></li>
     <li><a href="#timeline" class="toc__a"><span class="mono">7</span>Timeline and emails</a></li>
+    <li><a href="#other-people" class="toc__a"><span class="mono">8</span>Other people{% if other_people %} <span class="mono">{{ other_people|length }}</span>{% endif %}</a></li>
   </ul>
 </nav>
 <div class="thesis-main">
@@ -406,6 +407,15 @@
     </details>
     {% empty %}<p class="t-muted t-meta">No emails logged yet.</p>{% endfor %}
   </div>
+</section>
+
+{# 8 · Other people in the company, from the Company Map #}
+<section class="sec card" id="other-people">
+  <header class="sec__head">
+    <span class="sec__n mono">8</span><h2 class="t-h3">Other people in company</h2>
+    <span class="t-meta">{{ other_people|length }} from the Company Map, beyond the buyer, champion and users above</span>
+  </header>
+  <div class="sec__body">{% include "partials/people.html" with people=other_people %}</div>
 </section>
 
 </div>

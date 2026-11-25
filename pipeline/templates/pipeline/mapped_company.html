@@ -1,0 +1,44 @@
+{% extends "app.html" %}
+{% block title %}{{ company.name }} · Mapped universe{% endblock %}
+{% block page_class %}page--thesis{% endblock %}
+{% block content %}
+<a class="back link-btn" href="{% url 'pipeline:mapped_universe' %}">
+  <svg class="ico ico-16" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.75 8.25 12l6.25 6.25"/></svg>
+  Mapped universe
+</a>
+
+<header class="thesis-head">
+  <span class="eyebrow">Mapped company</span>
+  <h1 class="t-h1 thesis-head__title">{% include "partials/logo.html" with url=company.logo_url name=company.name %}<span>{{ company.name }}</span></h1>
+  <div class="tags">
+    <span class="tag tag--type">{{ company.segment }}</span>
+    {% if company.domain %}<a class="tag tag--outline mono" href="{% if company.url %}{{ company.url }}{% else %}https://{{ company.domain }}{% endif %}" target="_blank" rel="noopener">{{ company.domain }}</a>{% endif %}
+    {% if place %}<span class="tag tag--outline">{{ place }}</span>{% endif %}
+    {% if warm_count %}<span class="ppl__warm">Warm connection company</span>{% endif %}
+  </div>
+  <div class="thesis-head__actions">
+    <button type="button" class="btn btn--primary btn--sm" data-open-dialog="add-account" data-fill-name="{{ company.name }}" data-fill-domain="{{ company.domain }}">Add to pipeline</button>
+  </div>
+</header>
+
+<section class="sec card">
+  <header class="sec__head"><h2 class="t-h3">Company</h2><span class="t-meta">From the Company Map</span></header>
+  <div class="sec__body">
+    <dl class="mc__facts">
+      <div><dt>Segment</dt><dd>{{ company.segment }}{% if company.sub_type %} <span class="t-meta">&middot; {{ company.sub_type }}</span>{% endif %}</dd></div>
+      <div><dt>Website</dt><dd>{% if company.domain or company.url %}<a href="{% if company.url %}{{ company.url }}{% else %}https://{{ company.domain }}{% endif %}" target="_blank" rel="noopener">{{ company.domain|default:company.url }}</a>{% else %}&middot;{% endif %}</dd></div>
+      <div><dt>Location</dt><dd>{{ company.address|default:place|default:"·" }}{% if company.address and place and company.city not in company.address %}<span class="t-meta">, {{ place }}</span>{% endif %}</dd></div>
+      <div><dt>Employees</dt><dd class="mono">{{ company.employee_count|default:"·" }}</dd></div>
+      <div><dt>Company LinkedIn</dt><dd>{% if company.linkedin_url %}<a href="{{ company.linkedin_url }}" target="_blank" rel="noopener noreferrer">Open on LinkedIn</a>{% else %}&middot;{% endif %}</dd></div>
+      <div><dt>Source</dt><dd>{{ company.source|default:"·" }}</dd></div>
+    </dl>
+    {% if company.product_category %}<p class="t-body mc__cat"><span class="t-meta">Products and services</span><br>{{ company.product_category }}</p>{% endif %}
+  </div>
+</section>
+
+<section class="sec card" id="people">
+  <header class="sec__head"><h2 class="t-h3">People</h2><span class="t-meta mono">{{ people|length }}</span></header>
+  <div class="sec__body">{% include "partials/people.html" %}</div>
+</section>
+{% include "partials/add_account_dialog.html" %}
+{% endblock %}
