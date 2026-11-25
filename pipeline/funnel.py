@@ -102,11 +102,11 @@ def build(accounts, days, account_id=None):
                      'who': [{'email': p['email'], 'name': p['account'].name if p['account'] else '', 'pid': p['pid'],
                               'project': PROJECTS.get(p['pid'], str(p['pid']))} for p in who[:10]], 'more': max(len(who) - 10, 0)})
     top_paths = Counter(' > '.join(LABEL[s] for s in p['path']) for p in people).most_common(8)
-    return {'chips': [{'pk': a.pk, 'name': a.name, 'n': n} for a, n in chips], 'picked': picked, 'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
+    return {'chips': [{'pk': a.pk, 'name': a.name, 'logo_url': a.logo_url, 'n': n} for a, n in chips], 'picked': picked, 'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
             'by_project': dict(Counter(PROJECTS.get(p['pid'], str(p['pid'])) for p in people))}
 
 
-def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=170):
+def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=300):
     """Lay out a left-to-right journey Sankey. Column i is the i-th rung a user first reached; 'stop' is where their path ends."""
     cols = len(KEYS)
     links = Counter()
@@ -145,10 +145,19 @@ def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=170):
         xm = (x0 + x1) / 2
         out_links.append({'d': 'M%.1f,%.1f C%.1f,%.1f %.1f,%.1f %.1f,%.1f' % (x0, y0, xm, y0, xm, y1, x1, y1), 'w': round(max(w, 0.8), 1),
                           'step': b[1] if b[1] == 'stop' else a[1], 'title': '%s → %s: %d user%s' % (LABEL[a[1]], LABEL[b[1]], v, '' if v == 1 else 's')})
+    reached = Counter()
+    for (c, _), n in nodes.items():
+        reached[c] += n
+
+    def drop(c, step):
+        """Share of the people still in the funnel at the step before who ended their path here."""
+        live = reached[c - 1] - nodes[(c - 1, 'stop')]  # people at the step before who had not already stopped
+        return round(nodes[(c, step)] / live * 100) if step == 'stop' and live > 0 else None
+
     out_nodes = []
     for (c, step), p in pos.items():
         out_nodes.append({'x': round(p['x'], 1), 'y': round(p['y'], 1), 'h': round(max(p['h'], 1.5), 1), 'w': node_w, 'step': step,
-                          'label': LABEL[step], 'n': nodes[(c, step)], 'tx': round(p['x'] + node_w + 8, 1),
+                          'label': LABEL[step], 'n': nodes[(c, step)], 'drop': drop(c, step), 'tx': round(p['x'] + node_w + 8, 1),
                           'ty': round(p['y'] + max(p['h'], 1.5) / 2, 1)})
     heads = [{'x': round(x - node_w / 2, 1), 'text': 'Step %d' % i if i else 'Start'} for i, x in enumerate(xs)]
     return {'w': width, 'h': height, 'nodes': out_nodes, 'links': out_links, 'heads': heads}

@@ -5,7 +5,7 @@
     {% if f.picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=funnel">Reset</a>{% endif %}
   </div>
   {% if f.chips %}<nav class="fn__chips" aria-label="Show one company">
-    {% for c in f.chips %}<a class="fn__chip" href="?days={{ days }}&tab=funnel&account={{ c.pk }}" {% if f.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
+    {% for c in f.chips %}<a class="fn__chip" href="?days={{ days }}&tab=funnel&account={{ c.pk }}" {% if f.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
   </nav>{% endif %}
 
   {% if not f.total %}
@@ -30,8 +30,8 @@
       {% for h in s.heads %}<text class="fns__head" x="{{ h.x }}" y="14" text-anchor="start">{{ h.text }}</text>{% endfor %}
       <g transform="translate(0 24)">
         {% for l in s.links %}<path class="fns__link fns--{{ l.step }}" d="{{ l.d }}" stroke-width="{{ l.w }}"><title>{{ l.title }}</title></path>{% endfor %}
-        {% for n in s.nodes %}<rect class="fns__node fns--{{ n.step }}" x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}"><title>{{ n.label }}: {{ n.n }}</title></rect>
-        <text class="fns__lbl" x="{{ n.tx }}" y="{{ n.ty }}" dy="0.35em">{{ n.label }} <tspan class="fns__num">{{ n.n }}</tspan></text>{% endfor %}
+        {% for n in s.nodes %}<rect class="fns__node fns--{{ n.step }}" x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}"><title>{{ n.label }}: {{ n.n }}{% if n.drop is not None %} ({{ n.drop }}% drop off){% endif %}</title></rect>
+        <text class="fns__lbl" x="{{ n.tx }}" y="{{ n.ty }}" dy="0.35em">{{ n.label }} <tspan class="fns__num">{{ n.n }}</tspan>{% if n.drop is not None %}<tspan class="fns__drop"> · {{ n.drop }}% drop off</tspan>{% endif %}</text>{% endfor %}
       </g>
     </svg></div>
     {% endwith %}

@@ -7,8 +7,9 @@
       <span class="t-meta">Page views plus tracked events per day, across all client users. The darker part of each bar is actions taken.</span>
     </div>
     <div class="pulse" role="img" aria-label="Activity per day, {{ sh.first }} to {{ sh.last }}" style="--n: {{ sh.series|length }}">
-      {% for d in sh.series %}<div class="pulse__col" title="{{ d.label }} · {{ d.total }} page views and events · {{ d.acts }} actions · {{ d.users }} user{{ d.users|pluralize }}">
+      {% for d in sh.series %}<div class="pulse__col" tabindex="0" aria-label="{{ d.label }}: {{ d.total }} page views and events, {{ d.acts }} actions, {{ d.users }} user{{ d.users|pluralize }}">
         <span class="pulse__bar{% if not d.total %} pulse__bar--none{% endif %}" style="height: {{ d.h }}%"><span class="pulse__act" style="height: {{ d.share }}%"></span></span>
+        <span class="tip" role="tooltip"><b>{{ d.label }}</b><span>{{ d.total }} views and events</span><span>{{ d.acts }} actions</span><span>{{ d.users }} user{{ d.users|pluralize }}</span></span>
       </div>{% endfor %}
     </div>
     <div class="pulse__axis mono"><span>{{ sh.first }}</span><span>peak {{ sh.peak }} a day</span><span>{{ sh.last }}</span></div>
@@ -18,11 +19,11 @@
     <div class="uv__head"><h2 class="t-h3">Who is engaged</h2><span class="t-meta">{{ totals.matched_users }} users at tracker accounts</span></div>
     {% with total=totals.matched_users %}
     <div class="mix" role="img" aria-label="Users by engagement tier">
-      {% for t in sh.mix %}{% if t.n %}<span class="mix__seg mix__seg--{{ t.tier|lower }}" style="flex-grow: {{ t.n }}" title="{{ t.tier }}: {{ t.n }}"></span>{% endif %}{% endfor %}
+      {% for t in sh.mix %}{% if t.n %}<span class="mix__seg mix__seg--{{ t.tier|lower }} has-tip" style="flex-grow: {{ t.n }}" tabindex="0">{% include 'pipeline/_tier_tip.html' %}</span>{% endif %}{% endfor %}
     </div>
     {% endwith %}
     <ul class="mix__legend">
-      {% for t in sh.mix %}<li><span class="mix__dot mix__seg--{{ t.tier|lower }}"></span>{{ t.tier }}<b class="mono">{{ t.n }}</b></li>{% endfor %}
+      {% for t in sh.mix %}<li class="has-tip" {% if t.n %}tabindex="0"{% endif %}><span class="mix__dot mix__seg--{{ t.tier|lower }}"></span>{{ t.tier }}<b class="mono">{{ t.n }}</b>{% if t.n %}{% include 'pipeline/_tier_tip.html' %}{% endif %}</li>{% endfor %}
     </ul>
     <p class="t-meta">Power is 3+ actions and 4+ features. Active took an action or used it heavily. Browser only browsed.</p>
   </div>

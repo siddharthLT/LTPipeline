@@ -9,6 +9,7 @@ app_name = 'pipeline'
 # Product usage and the pipeline tracker share this codebase; APP_MODE decides which of them a deployment serves.
 usage_urls = [
     path('usage/', views.usage, name='usage'),
+    path('usage/user/', views.usage_user, name='usage_user'),
     path('usage/live.json', views.usage_live, name='usage_live'),
     path('usage/insights/', views.usage_insights, name='usage_insights'),
 ]

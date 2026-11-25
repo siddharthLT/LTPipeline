@@ -416,12 +416,32 @@ def usage(request):
         for d in daily:
             by_day.setdefault(d['day'], []).append(d)
         using = {m['account'].pk for m in rows}
+        all_users = [dict(u, account=m['account']) for m in rows for u in m['users']]
+        if tab == 'users':
+            try:
+                pick = int(request.GET.get('account', ''))
+            except ValueError:
+                pick = None
+            chips = {}
+            for u in all_users:
+                c = chips.setdefault(u['account'].pk, {'pk': u['account'].pk, 'name': u['account'].name, 'logo_url': u['account'].logo_url, 'n': 0})
+                c['n'] += 1
+            ctx.update(user_chips=sorted(chips.values(), key=lambda c: (-c['n'], c['name'])), picked=chips.get(pick))
+            if pick in chips:
+                all_users = [u for u in all_users if u['account'].pk == pick]
         ctx.update(rows=rows, unmatched=unmatched, days_list=sorted(by_day.items(), reverse=True), totals=totals,
-                   users=[dict(u, account=m['account']) for m in rows for u in m['users']],
+                   users=all_users,
                    tracked=len(accounts), with_usage=len(rows),
                    quiet=sorted((a for a in accounts if a.pk not in using), key=lambda a: (-a.furthest_stage, a.name)))
         if tab in ('overview', 'accounts'):
             ctx['shape'] = posthog.shape(rows, daily, days)
+        if tab == 'daily':
+            try:
+                pick = int(request.GET.get('account', ''))
+            except ValueError:
+                pick = None
+            names = {u['email']: u['name'] for m in rows for u in m['users'] if u['name']}
+            ctx['bd'] = posthog.breakdown(daily, names, days, pick, views=request.GET.get('views') == '1')
         if tab == 'recordings':
             ctx.update(_recordings_context(accounts, days))
         if tab == 'digests':
@@ -439,6 +459,38 @@ def usage(request):
     except Exception as e:  # network or PostHog errors should not break the page
         ctx['error'] = 'PostHog did not answer: %s' % e
     return render(request, 'pipeline/usage.html', ctx)
+
+
+@login_required
+def usage_user(request):
+    """One person's log: every recording still on PostHog and every page they opened, with date and time."""
+    from . import posthog
+    email = request.GET.get('email', '').strip().lower()
+    try:
+        days = int(request.GET.get('days', 30))
+    except ValueError:
+        days = 30
+    days = days if days in (7, 14, 30, 90) else 30
+    accounts = list(Account.objects.all())
+    ctx = {'nav': 'usage', 'email': email, 'days': days, 'windows': (7, 14, 30, 90),
+           'account': posthog.match_account(email, posthog.by_domain_of(accounts)) if email else None}
+    try:
+        recs = [r for r in posthog.recordings(posthog.REPLAY_RETENTION_DAYS) if r['email'].lower() == email]
+        pages = posthog.user_log(email, days)
+        by_day = {}
+        for p in pages:
+            by_day.setdefault(p['ts'].strftime('%Y-%m-%d'), []).append(p)
+        for r in recs:
+            r['account'] = ctx['account']
+            r['key'] = str(ctx['account'].pk) if ctx['account'] else 'x'
+            r['brand'] = ctx['account'].name if ctx['account'] else posthog.domain_of(r['email'])
+        ctx.update(recs=recs, name=next((r['name'] for r in recs if r['name']), ''), pages=pages, page_days=list(by_day.items()),
+                   rec_active=sum(r['active'] for r in recs))
+    except posthog.NotConfigured as e:
+        ctx['error'] = str(e)
+    except Exception as e:
+        ctx['error'] = 'PostHog did not answer: %s' % e
+    return render(request, 'pipeline/usage_user.html', ctx)
 
 
 @login_required

@@ -1,0 +1,42 @@
+{% extends "app.html" %}
+{% load static pipeline_extras %}
+{% block title %}{{ name|default:email }} · Usage log · Lunartree{% endblock %}
+{% block page_class %}page--usage{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <a class="t-meta" href="{% url 'pipeline:usage' %}?tab=users&days={{ days }}{% if account %}&account={{ account.pk }}{% endif %}">&larr; Users</a>
+  <h1 class="t-h1">{{ name|default:email }}</h1>
+  <p class="t-meta mono">{{ email }}{% if account %} &middot; <a href="{% account_url account.pk %}">{{ account.name }}</a>{% endif %}</p>
+</header>
+
+<div class="usage__bar">
+  <nav class="seg" aria-label="Window">
+    {% for w in windows %}<a class="seg__item" href="?email={{ email|urlencode }}&days={{ w }}" {% if w == days %}aria-pressed="true"{% endif %}>{{ w }}d</a>{% endfor %}
+  </nav>
+</div>
+
+{% if error %}
+<section class="card"><p class="t-body"><strong>Could not load the log.</strong> {{ error }}</p></section>
+{% else %}
+<section class="card ulog">
+  <div class="uv__head"><h2 class="t-h3">Recordings</h2><span class="t-meta">{{ recs|length }} on PostHog, {{ rec_active|spent }} of active time. PostHog keeps recordings for 30 days.</span></div>
+  {% if recs %}
+  <div class="recs"><div class="recs__grid">{% for r in recs %}{% include "pipeline/_rec_card.html" %}{% endfor %}</div></div>
+  {% else %}<p class="t-body">No recordings for this person in the last 30 days.</p>{% endif %}
+</section>
+
+<section class="card ulog">
+  <div class="uv__head"><h2 class="t-h3">Pages opened</h2><span class="t-meta">{{ pages|length }} page view{{ pages|length|pluralize }} in the last {{ days }} days, newest first. Company pages show the company id from the address.</span></div>
+  {% for day, items in page_days %}
+  <h3 class="ulog__day t-meta">{{ day }} &middot; {{ items|length }} page{{ items|length|pluralize }}</h3>
+  <ul class="ulog__list">
+    {% for p in items %}<li>
+      <span class="mono ulog__t">{{ p.ts|date:"H:i:s" }}</span>
+      <span class="ulog__area">{% if p.area %}<span class="tag tag--outline">{{ p.area }}</span>{% endif %}</span>
+      <span class="mono ulog__path clamp-1" title="{{ p.path }}">{{ p.path }}</span>
+    </li>{% endfor %}
+  </ul>
+  {% empty %}<p class="t-body">No page views in this window.</p>{% endfor %}
+</section>
+{% endif %}
+{% endblock %}

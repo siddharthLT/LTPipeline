@@ -13,11 +13,11 @@
   <nav class="seg" aria-label="Usage views"{% if not usage_only %} data-live-url="{% url 'pipeline:usage_live' %}"{% endif %}>
     <a class="seg__item" href="?days={{ days }}&tab=overview" {% if tab == 'overview' %}aria-pressed="true"{% endif %}>Overview</a>
     <a class="seg__item" href="?days={{ days }}&tab=funnel" {% if tab == 'funnel' %}aria-pressed="true"{% endif %}>Action funnel</a>
+    <a class="seg__item" href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-pressed="true"{% endif %}>Action breakdown</a>
     <a class="seg__item" href="?days={{ days }}&tab=accounts" {% if tab == 'accounts' %}aria-pressed="true"{% endif %}>Accounts</a>
     <a class="seg__item" href="?days={{ days }}&tab=recordings" {% if tab == 'recordings' %}aria-pressed="true"{% endif %}>Recordings{% if not usage_only %}<span class="live" hidden><i class="live__dot"></i><b class="live__n"></b><span class="live__pop" role="status"></span></span>{% endif %}</a>
     <a class="seg__item" href="?days={{ days }}&tab=digests" {% if tab == 'digests' %}aria-pressed="true"{% endif %}>Digest health</a>
     <a class="seg__item" href="?days={{ days }}&tab=users" {% if tab == 'users' %}aria-pressed="true"{% endif %}>Users</a>
-    <a class="seg__item" href="?days={{ days }}&tab=daily" {% if tab == 'daily' %}aria-pressed="true"{% endif %}>Daily</a>
     <a class="seg__item" href="?days={{ days }}&tab=unmatched" {% if tab == 'unmatched' %}aria-pressed="true"{% endif %}>Not in tracker{% if unmatched %} <span class="seg__count">{{ unmatched|length }}</span>{% endif %}</a>
   </nav>
   <nav class="seg" aria-label="Window">
@@ -31,14 +31,14 @@
 {% if error %}
 <section class="card"><p class="t-body"><strong>Could not load usage.</strong> {{ error }}</p></section>
 {% else %}
-<section class="usage__stats">
+{% if tab == 'overview' %}<section class="usage__stats">
   <div class="card usage__stat"><span class="t-meta">Tracker accounts using it</span><strong>{{ with_usage }} of {{ tracked }}</strong></div>
   <div class="card usage__stat"><span class="t-meta">Users matched to an account</span><strong>{{ totals.matched_users }} of {{ totals.users }}</strong></div>
   <div class="card usage__stat"><span class="t-meta">Tracked events</span><strong>{{ totals.evts }}</strong></div>
   <div class="card usage__stat"><span class="t-meta">Actions taken</span><strong>{{ totals.acts }}</strong></div>
   <div class="card usage__stat"><span class="t-meta">AI chats</span><strong>{{ totals.ai }}</strong></div>
   <div class="card usage__stat"><span class="t-meta">Rage clicks</span><strong>{{ totals.rage }}</strong></div>
-</section>
+</section>{% endif %}
 
 
 
@@ -50,29 +50,25 @@
 {% else %}
 <section class="card usage__card">
 {% if tab == 'users' %}
+  <div class="fn__filters">
+    <span class="t-meta">{% if picked %}<strong>{{ picked.name }}</strong> &middot; {% endif %}{{ users|length }} user{{ users|length|pluralize }}</span>
+    {% if picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=users">Reset</a>{% endif %}
+  </div>
+  <nav class="fn__chips ucp" aria-label="Show one company">
+    {% for c in user_chips %}<a class="fn__chip" href="?days={{ days }}&tab=users&account={{ c.pk }}" {% if picked.pk == c.pk %}aria-pressed="true"{% endif %}>{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
+  </nav>
   <div class="usage__scroll"><table class="rules-table">
-    <thead><tr><th>User</th><th>Account</th><th>Tier</th><th class="num">Sessions</th><th class="num">Features</th><th class="num">Pages</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th>Last seen</th></tr></thead>
+    <thead><tr><th>User</th><th>Account</th><th>Tier</th><th class="num">Sessions</th><th class="num">Features</th><th class="num">Pages</th><th class="num">Actions</th><th class="num">AI</th><th class="num">Rage</th><th>Last seen</th><th></th></tr></thead>
     <tbody>{% for u in users %}<tr>
       <td>{{ u.name|default:u.email }}<br><span class="t-meta mono">{{ u.email }}</span></td>
       <td><a href="{% account_url u.account.pk %}">{{ u.account.name }}</a></td>
-      <td><span class="tier tier--{{ u.tier|lower }}">{{ u.tier }}</span></td><td class="num">{{ u.sessions }}</td><td class="num">{{ u.feats }}</td><td class="num">{{ u.pvs }}</td><td class="num">{{ u.acts }}</td><td class="num">{{ u.ai }}</td><td class="num">{{ u.rage }}</td><td class="nowrap">{{ u.last_seen|slice:":10" }}</td>
-    </tr>{% empty %}<tr><td colspan="10">No matched users in this window.</td></tr>{% endfor %}</tbody>
+      <td><span class="tier tier--{{ u.tier|lower }}">{{ u.tier }}</span></td><td class="num">{{ u.sessions }}</td><td class="num">{{ u.feats }}</td><td class="num">{{ u.pvs }}</td><td class="num">{{ u.acts }}</td><td class="num">{{ u.ai }}</td><td class="num">{{ u.rage }}</td><td class="nowrap">{{ u.last_seen|slice:":10" }}</td><td class="nowrap"><a class="btn btn--sm" href="{% url 'pipeline:usage_user' %}?email={{ u.email|urlencode }}&days={{ days }}">See log</a></td>
+    </tr>{% empty %}<tr><td colspan="11">No matched users in this window.</td></tr>{% endfor %}</tbody>
   </table></div>
   <p class="t-meta">Tier: Power is 3+ actions and 4+ features. Active took an action or used it heavily. Browser only browsed. Low is minimal.</p>
 
 {% elif tab == 'daily' %}
-  <div class="usage__scroll"><table class="rules-table usage__daily">
-    <thead><tr><th>User</th><th>Account</th><th class="num">Pages</th>{% for a in actions %}<th class="num"><span title="{{ a.1 }}">{{ a.0 }}</span></th>{% endfor %}<th class="num">Total</th></tr></thead>
-    {% for day, items in days_list %}
-    <tbody>
-      <tr class="usage__dayrow"><th colspan="{{ actions|length|add:4 }}">{{ day }} <span class="t-meta">&middot; {{ items|length }} user{{ items|length|pluralize }}</span></th></tr>
-      {% for d in items %}{% if d.account %}<tr>
-        <td class="mono clip" title="{{ d.email }}">{{ d.email }}</td><td><a href="{% account_url d.account.pk %}">{{ d.account.name }}</a></td><td class="num">{{ d.pvs }}</td>
-        {% for c in d.counts %}<td class="num">{% if c %}<strong>{{ c }}</strong>{% else %}<span class="t-muted">&middot;</span>{% endif %}</td>{% endfor %}<td class="num"><strong>{{ d.total }}</strong></td>
-      </tr>{% endif %}{% endfor %}
-    </tbody>
-    {% empty %}<tbody><tr><td colspan="12">No activity in this window.</td></tr></tbody>{% endfor %}
-  </table></div>
+  {% include "pipeline/_usage_breakdown.html" %}
 
 {% elif tab == 'unmatched' %}
   <p class="t-meta">People using BioLens whose email domain does not match any tracker account. To connect one, set the same domain on the account (edit Company on its page), or add the domain to ALIASES in <span class="mono">pipeline/posthog.py</span>.</p>

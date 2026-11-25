@@ -397,6 +397,8 @@ class UsageVisualTests(Base):
         self.assertGreaterEqual(card['strip'][-1]['lvl'], 1)
         self.assertEqual(card['people'][0]['ini'], 'AL')
         self.assertEqual(sh['features'][0]['label'], 'Company profiles read')
+        active = next(t for t in sh['mix'] if t['tier'] == 'Active')
+        self.assertEqual(active['people'], [{'who': 'Ann Lee', 'account': self.account.name}])
 
     def test_usage_tabs_render(self):
         import datetime
@@ -430,6 +432,30 @@ class UsageVisualTests(Base):
             self.assertContains(r, '6:40')
             self.assertContains(r, 'mk--rage')
             self.assertContains(r, 'data-acct="%d"' % self.account.pk)
+            daily[0]['counts'] = [2] + [0] * (len(posthog.ACTIONS) - 1)
+            daily[0]['extra'] = [3, 0, 0, 0, 0]
+            r = self.client.get(reverse('pipeline:usage') + '?tab=daily')
+            self.assertContains(r, 'bd__seg bd__c0')
+            self.assertContains(r, 'bd__seg bd__c8')
+            self.assertNotContains(r, 'bd__seg bd__c13')
+            r = self.client.get(reverse('pipeline:usage') + '?tab=daily&views=1')
+            self.assertContains(r, 'bd__seg bd__c13')
+            r = self.client.get(reverse('pipeline:usage') + '?tab=daily')
+            self.assertContains(r, 'Ann Lee')
+            r = self.client.get(reverse('pipeline:usage') + '?tab=daily&account=999999')
+            self.assertEqual(r.status_code, 200)
+            r = self.client.get(reverse('pipeline:usage') + '?tab=users&account=%d' % self.account.pk)
+            self.assertContains(r, 'See log')
+            self.assertContains(r, 'aria-pressed="true"')
+            r = self.client.get(reverse('pipeline:usage') + '?tab=users&account=999999')
+            self.assertContains(r, 'a@x.com')  # an unknown company leaves the list unfiltered
+            page = {'ts': now, 'path': '/biolens/companies/4427', 'area': 'Company profile', 'sid': 'sess-1', 'pid': 1}
+            with mock.patch.object(posthog, 'user_log', return_value=[dict(page)]):
+                r = self.client.get(reverse('pipeline:usage_user') + '?email=a@x.com')
+            self.assertContains(r, '/biolens/companies/4427')
+            self.assertNotContains(r, 'Watch session')
+            self.assertContains(r, 'rec__thumb--mid')
+            self.assertContains(r, 'Sent an email')
 
 
 class MappedUniverseTests(Base):

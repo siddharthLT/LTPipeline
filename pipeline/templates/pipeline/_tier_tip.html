@@ -1,0 +1,1 @@
+<span class="tip tip--list" role="tooltip"><b>{{ t.tier }} · {{ t.n }}</b>{% for p in t.people|slice:":12" %}<span>{{ p.who }} <i>{{ p.account }}</i></span>{% endfor %}{% if t.people|length > 12 %}<span class="tip__more">+ {{ t.people|length|add:"-12" }} more</span>{% endif %}</span>

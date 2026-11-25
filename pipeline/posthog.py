@@ -21,6 +21,14 @@ ACTIONS = [
     ('workspace_companies:company_added', 'Added to workspace'),
     ('workspace:created', 'Workspaces created'),
 ]
+# Other things people do, tracked alongside the actions: shown in the Action breakdown but not counted as actions
+EXTRAS = [
+    ('chat:user_message_submit', 'AI chats'),
+    ('workspace_companies:filter_applied', 'Filters applied'),
+    ('chat:download_report_click', 'Reports downloaded'),
+    ('outreach:email_abandoned', 'Emails abandoned'),
+    ('decision_makers:removed', 'DMs removed'),
+]
 SHORT = ['Emails', 'DM DL', 'DM +', 'Status', 'Score', 'Lead', 'Add WS', 'WS new']
 ALL_EVENTS = [e for e, _ in ACTIONS] + [
     'outreach:email_abandoned', 'decision_makers:removed', 'workspace_companies:filter_applied',
@@ -107,7 +115,7 @@ def user_rows(days):
 
 
 def daily_rows(days):
-    cols = ','.join("countIf(event = '%s')" % e for e in ACTION_EVENTS)
+    cols = ','.join("countIf(event = '%s')" % e for e in ACTION_EVENTS + [e for e, _ in EXTRAS])
     q = """SELECT toDate(timestamp) AS day, person.properties.email AS email, countIf(event = '$pageview') AS pvs,
       %s, countIf(event IN (%s)) AS total FROM events WHERE %s GROUP BY day, email
       ORDER BY day DESC, total DESC LIMIT 5000""" % (cols, _in(ALL_EVENTS), _where(days))
@@ -198,7 +206,7 @@ def join(accounts, days):
     for r in data['daily']:
         a = email_acct.get(r[1])
         daily.append({'day': str(r[0])[:10], 'email': r[1], 'account': a, 'pvs': r[2],
-                      'counts': r[3:3 + len(ACTIONS)], 'total': r[-1]})
+                      'counts': r[3:3 + len(ACTIONS)], 'extra': r[3 + len(ACTIONS):-1], 'total': r[-1]})
     totals = {'users': len(data['users']), 'matched_users': sum(len(m['users']) for m in rows),
               'evts': sum(u['evts'] for u in data['users']), 'acts': sum(u['acts'] for u in data['users']),
               'ai': sum(u['ai'] for u in data['users']), 'rage': sum(u['rage'] for u in data['users'])}
@@ -245,7 +253,11 @@ def shape(rows, daily, days):
     top = max([f['n'] for f in feature_rows] + [1])
     for f in feature_rows:
         f['w'] = round(f['n'] / top * 100, 1)
-    mix = [{'tier': t, 'n': sum(1 for u in users if u['tier'] == t)} for t in ('Power', 'Active', 'Browser', 'Low')]
+    who = defaultdict(list)
+    for m in rows:
+        for u in sorted(m['users'], key=lambda u: -u['evts']):
+            who[u['tier']].append({'who': u['name'] or u['email'], 'account': m['account'].name})
+    mix = [{'tier': t, 'n': len(who[t]), 'people': who[t]} for t in ('Power', 'Active', 'Browser', 'Low')]
     cards = []
     for m in rows:
         v = per_acct.get(m['account'].pk, {})
@@ -435,3 +447,67 @@ def recordings(days):
     out.sort(key=lambda r: r['start'], reverse=True)
     cache.set(k, out, 300)
     return out
+
+
+def user_log(email, days):
+    """Every page a person opened, newest first, across both projects: [{ts, path, area, sid, pid}]. Page views outlive recordings, so this reaches back further."""
+    email = email.lower()
+    if not re.fullmatch(r"[^\s'\"\\]+@[^\s'\"\\]+", email):
+        return []
+    k = 'posthog-userlog-%s-%d' % (email, days)
+    out = cache.get(k)
+    if out is None:
+        q = ("SELECT timestamp, properties.`$current_url`, properties.`$session_id` FROM events WHERE event = '$pageview' "
+             "AND timestamp >= now() - INTERVAL %d DAY AND lower(person.properties.email) = '%s' ORDER BY timestamp DESC LIMIT 3000" % (days, email))
+        out = []
+        for pid, rows in hql_all(q):
+            for ts, url, sid in rows:
+                path = re.sub(r'^https?://[^/]+', '', url or '') or '/'
+                out.append({'ts': _when(ts), 'path': path, 'area': area_of(url) or '', 'sid': sid or '', 'pid': pid})
+        out.sort(key=lambda r: r['ts'], reverse=True)
+        cache.set(k, out, 300)
+    return out
+
+
+def breakdown(daily, names, days, account_id=None, views=False):
+    """Everything people did per day, stacked by kind, with who did each: the Action breakdown chart. Actions first, then the other tracked
+    events, then page views if asked for. account_id limits it to one tracker account."""
+    today = datetime.now(timezone.utc).date()
+    span = [(today - timedelta(days=i)).isoformat() for i in range(days, -1, -1)]
+    labels = [l for _, l in ACTIONS] + [l for _, l in EXTRAS] + ['Page views']
+    n_act, n_all = len(ACTIONS), len(ACTIONS) + len(EXTRAS)
+    show = n_all + 1 if views else n_all
+    chips = {}
+    cells = {d: [defaultdict(int) for _ in range(show)] for d in span}  # day -> kind -> {(email, account name): n}
+    for r in daily:
+        extra = list(r.get('extra') or [])
+        extra += [0] * (len(EXTRAS) - len(extra))
+        vec = list(r['counts']) + extra + [r['pvs']]
+        a = r['account']
+        if a and sum(vec[:n_act]):
+            c = chips.setdefault(a.pk, {'pk': a.pk, 'name': a.name, 'logo_url': a.logo_url, 'n': 0})
+            c['n'] += sum(vec[:n_act])
+        if r['day'] not in cells or (account_id and (not a or a.pk != account_id)):
+            continue
+        for i in range(show):
+            if vec[i]:
+                cells[r['day']][i][(r['email'], a.name if a else domain_of(r['email']))] += vec[i]
+    cols, kind_n = [], defaultdict(int)
+    for d in span:
+        segs, total = [], 0
+        for i, who in enumerate(cells[d]):
+            n = sum(who.values())
+            if n:
+                people = sorted(who.items(), key=lambda kv: (-kv[1], kv[0]))
+                segs.append({'i': i, 'label': labels[i], 'n': n,
+                             'people': [{'who': names.get(e) or e, 'account': acct, 'n': k} for (e, acct), k in people[:10]],
+                             'more': max(0, len(people) - 10)})
+                total += n; kind_n[i] += n
+        cols.append({'day': d, 'label': datetime.strptime(d, '%Y-%m-%d').strftime('%b %-d'), 'total': total, 'segs': segs})
+    peak = max([c['total'] for c in cols] + [1])
+    for c in cols:
+        c['h'] = round(c['total'] / peak * 100, 1)
+    kinds = [{'i': i, 'label': labels[i], 'n': kind_n[i], 'other': i >= n_act} for i in range(show)]
+    return {'cols': cols, 'peak': peak, 'kinds': kinds, 'total': sum(c['total'] for c in cols), 'first': cols[0]['label'], 'last': cols[-1]['label'],
+            'actions': sum(kind_n[i] for i in range(n_act)), 'views': views,
+            'chips': sorted(chips.values(), key=lambda c: (-c['n'], c['name'])), 'picked': chips.get(account_id)}

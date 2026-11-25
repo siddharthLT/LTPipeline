@@ -1,0 +1,28 @@
+{% load pipeline_extras %}
+{% with b=bd %}
+<div class="fn__filters">
+  <span class="t-meta">{% if b.picked %}<strong>{{ b.picked.name }}</strong> &middot; {% endif %}{{ b.actions }} action{{ b.actions|pluralize }} in {{ days }} days</span>
+  <span class="bd__tools">
+    <a class="chip chip--sm" href="?days={{ days }}&tab=daily{% if b.picked %}&account={{ b.picked.pk }}{% endif %}{% if not b.views %}&views=1{% endif %}" aria-pressed="{% if b.views %}true{% else %}false{% endif %}">Page views</a>
+    {% if b.picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=daily{% if b.views %}&views=1{% endif %}">Reset</a>{% endif %}
+  </span>
+</div>
+<nav class="fn__chips ucp" aria-label="Show one company">
+  {% for c in b.chips %}<a class="fn__chip" href="?days={{ days }}&tab=daily&account={{ c.pk }}{% if b.views %}&views=1{% endif %}" {% if b.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
+</nav>
+<section class="card bd">
+  <div class="uv__head"><h2 class="t-h3">Everything people did, per day</h2><span class="t-meta">Solid blocks are actions. Striped blocks are other tracked activity: AI chats, filters and the like. Switch on Page views to add them (they dwarf the rest). Hover a block to see who did it.</span></div>
+  <ul class="bd__legend">{% for k in b.kinds %}<li{% if k.other and forloop.counter0 == 8 %} class="bd__legend--gap"{% endif %}><i class="bd__sw bd__c{{ k.i }}"></i>{{ k.label }}<b class="mono">{{ k.n }}</b></li>{% endfor %}</ul>
+  <div class="bd__chart" style="--n: {{ b.cols|length }}">
+    {% for c in b.cols %}<div class="bd__col" aria-label="{{ c.label }}: {{ c.total }} action{{ c.total|pluralize }}">
+      <div class="bd__stack" style="height: {{ c.h }}%">
+        {% for sg in c.segs %}<span class="bd__seg bd__c{{ sg.i }}" style="flex-grow: {{ sg.n }}" tabindex="0">
+          <span class="tip tip--list" role="tooltip"><b>{{ c.label }} &middot; {{ sg.label }} &middot; {{ sg.n }}</b>{% for p in sg.people %}<span>{{ p.who }} <i>{{ p.account }}</i>{% if p.n > 1 %} <i>&times;{{ p.n }}</i>{% endif %}</span>{% endfor %}{% if sg.more %}<span class="tip__more">+ {{ sg.more }} more</span>{% endif %}</span>
+        </span>{% endfor %}
+      </div>
+    </div>{% endfor %}
+  </div>
+  <div class="pulse__axis mono"><span>{{ b.first }}</span><span>busiest day: {{ b.peak }} action{{ b.peak|pluralize }}</span><span>{{ b.last }}</span></div>
+  {% if not b.total %}<p class="t-body">Nothing in this window{% if b.picked %} for {{ b.picked.name }}{% endif %}.</p>{% endif %}
+</section>
+{% endwith %}
