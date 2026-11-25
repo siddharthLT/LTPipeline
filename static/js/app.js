@@ -454,6 +454,14 @@ document.querySelectorAll('[data-autosubmit]').forEach(function (form) {
 document.querySelectorAll('[data-insights]').forEach(function (box) {
   var btn = box.querySelector('[data-insights-go]'), err = box.querySelector('[data-insights-err]'), loading = box.querySelector('[data-insights-loading]');
   var body = box.querySelector('[data-insights-body]'), meta = box.querySelector('[data-insights-meta]');
+  var toggle = box.querySelector('[data-insights-toggle]'), hasOne = !toggle.hidden;
+  // the summary stays folded away until someone opens it
+  function open(on) {
+    body.hidden = !on; toggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+    toggle.querySelector('span').textContent = on ? 'Collapse' : 'Expand';
+    toggle.classList.toggle('is-open', on);
+  }
+  toggle.addEventListener('click', function () { open(body.hidden); });
   var SECTIONS = [['highlights', 'Key highlights', ' ins__box--hi'], ['insights', 'General insights', ''], ['outliers', 'Outliers', ''], ['risks', 'Risks', ' ins__box--risk']];
   var HEADS = { HEADLINE: 'headline', HIGHLIGHTS: 'highlights', INSIGHTS: 'insights', OUTLIERS: 'outliers', RISKS: 'risks' };
 
@@ -486,13 +494,14 @@ document.querySelectorAll('[data-insights]').forEach(function (box) {
   function fail(msg) { err.textContent = msg; err.hidden = false; }
 
   btn.addEventListener('click', function () {
-    var label = btn.querySelector('span'), original = label.textContent, text = '', buf = '', started = false;
+    var label = btn.querySelector('span'), text = '', buf = '', started = false;
+    open(true); toggle.hidden = true;  // show it as it is written
     btn.setAttribute('aria-busy', 'true'); label.textContent = 'Generating…'; err.hidden = true; loading.hidden = false;
     var form = new URLSearchParams({ tab: box.dataset.tab, days: box.dataset.days, csrfmiddlewaretoken: box.querySelector('[name=csrfmiddlewaretoken]').value });
     function handle(ev) {
       if (ev.t === 'reset') { text = ''; started = false; loading.hidden = false; body.textContent = ''; }
       else if (ev.t === 'delta') { text += ev.v; if (!started) { started = true; loading.hidden = true; body.textContent = ''; } render(parse(text)); }
-      else if (ev.t === 'done') { render(ev.content); meta.textContent = 'Generated just now by you for the last ' + box.dataset.days + ' days. Everyone sees this one until someone generates a new one.'; }
+      else if (ev.t === 'done') { hasOne = true; render(ev.content); meta.textContent = 'Generated just now by you for the last ' + box.dataset.days + ' days. Everyone sees this one until someone generates a new one.'; }
       else if (ev.t === 'error') fail(ev.v);
     }
     fetch(box.dataset.url, { method: 'POST', body: form, credentials: 'same-origin' }).then(function (r) {
@@ -508,7 +517,8 @@ document.querySelectorAll('[data-insights]').forEach(function (box) {
         });
       })();
     }).catch(function () { fail('Could not reach the server.'); }).finally(function () {
-      btn.removeAttribute('aria-busy'); label.textContent = original; loading.hidden = true;
+      btn.removeAttribute('aria-busy'); label.textContent = hasOne ? 'New insights' : 'Generate insights'; loading.hidden = true;
+      toggle.hidden = !hasOne;
     });
   });
 });

@@ -793,6 +793,20 @@ class UsageInsightTests(Base):
             body = b''.join(r.streaming_content).decode() if r.streaming else ''  # the stream is lazy, so read it while patched
         return r, [json.loads(l) for l in body.splitlines()]
 
+    def test_panel_is_folded_and_offers_expand_only_once_generated(self):
+        from unittest import mock
+        from . import posthog
+        url = reverse('pipeline:usage') + '?tab=funnel'
+        with mock.patch.object(posthog, 'hql', return_value=[]):
+            fresh = self.client.get(url).content.decode()
+            self.stream()
+            done = self.client.get(url).content.decode()
+        self.assertIn('Generate insights', fresh)
+        self.assertRegex(fresh, r'data-insights-toggle[^>]*hidden')  # nothing to expand yet
+        self.assertIn('New insights', done)
+        self.assertNotRegex(done, r'data-insights-toggle[^>]*hidden')
+        self.assertRegex(done, r'data-insights-body hidden')  # folded until someone clicks Expand
+
     def test_generate_streams_and_is_shared_and_replaced(self):
         from .models import UsageInsight
         r, evs = self.stream()

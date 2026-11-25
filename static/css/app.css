@@ -1082,3 +1082,11 @@ a.chip, a.chip:hover { text-decoration: none; }
 .ppl__via { display: inline-block; margin-left: 4px; padding: 0 8px; border-radius: 999px; border: 1px solid #D92D20; color: #B42318; font-size: 12px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
 .mu__nm--warm, .mu__nm--warm:hover { color: #D92D20; }
 .mu__warm:has(input:checked) { border-color: #D92D20; color: #B42318; }
+
+/* AI insights: folded away until opened */
+.ins__title { display: flex; align-items: center; gap: 8px; }
+.ins__title svg { color: var(--teal); }
+.ins__acts { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.ins__chev { margin-right: 4px; vertical-align: -3px; transition: transform .2s; }
+.ins__toggle.is-open .ins__chev { transform: rotate(180deg); }
+[data-insights-body]:not([hidden]) { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--line); }
