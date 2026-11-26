@@ -591,3 +591,17 @@ class StepDone(models.Model):
 
     class Meta:
         unique_together = [('person', 'step')]
+
+
+class DigestRecipient(models.Model):
+    """Someone who gets the pipeline digest email. Managed in the Django admin; untick Active to pause them."""
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=120, blank=True)
+    active = models.BooleanField(default=True, help_text='Untick to stop sending without deleting them')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['email']
+
+    def __str__(self):
+        return self.email

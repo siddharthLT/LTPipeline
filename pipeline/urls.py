@@ -29,6 +29,7 @@ pipeline_urls = [
     path('outreach/<int:pk>/person/<int:person_id>/', ov.person_save, name='outreach_person'),
     path('outreach/<int:pk>/person/<int:person_id>/delete/', ov.person_delete, name='outreach_person_delete'),
     path('outreach/<int:pk>/toggle/', ov.outreach_toggle, name='outreach_toggle'),
+    path('digest/cron/', views.digest_cron, name='digest_cron'),
     path('', views.dashboard, name='dashboard'),
     path('search.json', views.search_index, name='search'),
     path('hand-raisers/', views.hand_raisers, name='hand_raisers'),

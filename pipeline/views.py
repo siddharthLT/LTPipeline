@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
@@ -682,3 +683,18 @@ def mapped_universe(request):
         ctx.update(page=page, prev_qs=link(page=page.previous_page_number()) if page.has_previous() else '',
                    next_qs=link(page=page.next_page_number()) if page.has_next() else '')
     return render(request, 'pipeline/mapped_universe.html', ctx)
+
+
+def digest_cron(request):
+    """Called by the Vercel cron (see vercel.json). Vercel sends `Authorization: Bearer $CRON_SECRET`; with no secret set the route does not exist."""
+    import hmac
+    from django.http import Http404, JsonResponse
+    from . import digest_email
+    secret = os.environ.get('CRON_SECRET', '')
+    if not secret:
+        raise Http404
+    if not hmac.compare_digest(request.headers.get('Authorization', ''), 'Bearer ' + secret):
+        return JsonResponse({'error': 'unauthorized'}, status=401)
+    results = digest_email.send_digest()
+    return JsonResponse({'sent': [e for e, r in results if not r.startswith('ERROR')], 'failed': {e: r for e, r in results if r.startswith('ERROR')}},
+                        status=200 if all(not r.startswith('ERROR') for _, r in results) else 502)

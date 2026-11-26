@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from accounts.models import User
 
-from .models import Account, MeetingNote, SentEmail, TimelineEvent, normalize_domain
+from .models import Account, DigestRecipient, MeetingNote, SentEmail, StageProgress, Task, TimelineEvent, normalize_domain
 from .stages import STAGE_WEIGHTS
 
 
@@ -957,3 +957,53 @@ class OutreachTests(Base):
         ddf.people.first().delete()
         call_command('seed_outreach', stdout=__import__('io').StringIO())
         self.assertEqual(ddf.people.count(), 17)  # a campaign with content is not reseeded
+
+
+class DigestEmailTests(Base):
+    def test_digest_lists_accounts_over_25_and_the_ten_newest_open_actions(self):
+        from unittest import mock
+        from . import digest_email
+        hot = Account.objects.create(name='HotCo', domain='hot.com')
+        for n in range(1, 7):  # four 5% stages and two 10% stages: 40%
+            StageProgress.objects.filter(account=hot, stage=n).update(done=True)
+        cold = Account.objects.create(name='ColdCo', domain='cold.com')
+        client = Account.objects.create(name='ClientCo', domain='client.com')
+        StageProgress.objects.filter(account=client).update(done=True)  # every stage done: already a client
+        Task.objects.create(account=client, title='Client chore')
+        for i in range(12):
+            Task.objects.create(account=hot, title='Action %d' % i)
+        Task.objects.create(account=hot, title='Finished one', done=True)
+        data = digest_email.gather()
+        self.assertEqual(len(data['tasks']), 10)
+        self.assertEqual(data['tasks'][0].title, 'Action 11')  # newest first
+        subject, html, text = digest_email.render(data, 'Sam Lee')
+        self.assertIn('HotCo', html)
+        self.assertNotIn('ColdCo', html)
+        self.assertNotIn('ClientCo', html)
+        self.assertNotIn('Client chore', html)
+        self.assertIn('/accounts/%d/' % hot.pk, html)
+        self.assertIn('https://lt-pipeline.vercel.app/actions/', html)
+        self.assertIn('Hi Sam', html)
+        self.assertNotIn('Finished one', html)
+        sent = []
+        with mock.patch.object(digest_email, 'send', side_effect=lambda *a: sent.append(a[0]) or 'id'):
+            DigestRecipient.objects.create(email='a@x.com')
+            DigestRecipient.objects.create(email='b@x.com', active=False)
+            self.assertEqual([r[0] for r in digest_email.send_digest()], ['a@x.com'])  # inactive people are skipped
+            digest_email.send_digest(['test@x.com'])
+        self.assertEqual(sent, ['a@x.com', 'test@x.com'])
+
+    def test_cron_endpoint_needs_the_secret_and_sends_to_active_recipients(self):
+        from unittest import mock
+        from . import digest_email
+        url = reverse('pipeline:digest_cron')
+        DigestRecipient.objects.create(email='a@x.com', name='Ann')
+        DigestRecipient.objects.create(email='off@x.com', active=False)
+        with mock.patch.dict('os.environ', {'CRON_SECRET': ''}):
+            self.assertEqual(self.client.get(url).status_code, 404)  # no secret configured: the route does not exist
+        with mock.patch.dict('os.environ', {'CRON_SECRET': 's3cret'}), mock.patch.object(digest_email, 'send', return_value='id') as send:
+            self.assertEqual(self.client.get(url).status_code, 401)
+            self.assertEqual(self.client.get(url, HTTP_AUTHORIZATION='Bearer wrong').status_code, 401)
+            r = self.client.get(url, HTTP_AUTHORIZATION='Bearer s3cret')
+            self.assertEqual((r.status_code, r.json()['sent']), (200, ['a@x.com']))
+            self.assertEqual(send.call_count, 1)
