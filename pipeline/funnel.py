@@ -29,28 +29,54 @@ STEP_EVENTS = {
 EVENT_STEP = {e: k for k, evs in STEP_EVENTS.items() for e in evs}
 KEYS = [k for k, _, _ in STEPS]
 LABEL = {k: l for k, l, _ in STEPS}
+# Places people go that are not rungs of the ladder: they show up in the journey Sankey (from page views) but not in the "how far" bars.
+SIDE = [('home', 'Opened Homepage'), ('workspace', 'Viewed a Workspace'), ('insights', 'Checked Insights')]
+JOURNEY = KEYS + [k for k, _ in SIDE]
+LABEL.update(SIDE)
 LABEL['stop'] = 'Stopped here'
 
 
-def _users(days):
-    """{(project, email): {step: first time}} for client users in the window."""
+# Page views that become journey steps: the first matching URL wins, so the homepage is only the bare /biolens
+SIDE_CASE = ("multiIf(properties.`$current_url` LIKE '%%/biolens/insights%%', 'insights', properties.`$current_url` LIKE '%%/biolens/workspaces%%', 'workspace', "
+             "match(properties.`$current_url`, '^https?://[^/]+/biolens/?([?#].*)?$'), 'home', '')")
+
+
+def _users(days, sessions=False):
+    """{(project, email): {step: first time}} for client users in the window; with sessions, {(project, email, session): ...} so each visit stands alone."""
     where = posthog._where(days)
     events = posthog._in(list(EVENT_STEP))
     out = defaultdict(dict)
-    q_events = ("SELECT person.properties.email, event, min(timestamp) FROM events WHERE %s AND event IN (%s) "
-                "GROUP BY person.properties.email, event LIMIT 20000" % (where, events))
-    q_views = ("SELECT person.properties.email, min(timestamp) FROM events WHERE %s AND event = '$pageview' "
-               "GROUP BY person.properties.email LIMIT 20000" % where)
-    with ThreadPoolExecutor(2) as ex:  # both queries, on every project, at once
-        got_events, got_views = ex.submit(posthog.hql_all, q_events), ex.submit(posthog.hql_all, q_views)
+    who = "person.properties.email" + (", properties.`$session_id`" if sessions else "")
+    n = 2 if sessions else 1  # columns that identify the unit
+    gb = lambda extra: ', '.join(str(i + 1) for i in range(n + extra))
+    q_events = ("SELECT %s, event, min(timestamp) FROM events WHERE %s AND event IN (%s) GROUP BY %s LIMIT 50000" % (who, where, events, gb(1)))
+    q_views = ("SELECT %s, min(timestamp) FROM events WHERE %s AND event = '$pageview' GROUP BY %s LIMIT 50000" % (who, where, gb(0)))
+    q_side = ("SELECT %s, %s AS step, min(timestamp) FROM events WHERE %s AND event = '$pageview' AND step != '' GROUP BY %s LIMIT 50000"
+              % (who, SIDE_CASE, where, gb(1)))
+
+    def unit(pid, row):
+        if sessions and not row[1]:  # no session id, so it cannot be told apart from another visit
+            return None
+        return (pid, row[0].lower(), row[1]) if sessions else (pid, row[0].lower())
+
+    def put(k, step, ts):
+        seen = out[k]
+        seen[step] = min(seen[step], ts) if step in seen else ts
+
+    with ThreadPoolExecutor(3) as ex:  # all three queries, on every project, at once
+        got_events, got_views, got_side = ex.submit(posthog.hql_all, q_events), ex.submit(posthog.hql_all, q_views), ex.submit(posthog.hql_all, q_side)
         for pid, rows in got_events.result():
-            for email, ev, ts in rows:
-                step = EVENT_STEP[ev]
-                seen = out[(pid, email.lower())]
-                seen[step] = min(seen[step], ts) if step in seen else ts
+            for row in rows:
+                if unit(pid, row):
+                    put(unit(pid, row), EVENT_STEP[row[n]], row[n + 1])
         for pid, rows in got_views.result():
-            for email, ts in rows:
-                out[(pid, email.lower())].setdefault('visit', ts)
+            for row in rows:
+                if unit(pid, row):
+                    out[unit(pid, row)].setdefault('visit', row[n])
+        for pid, rows in got_side.result():
+            for row in rows:
+                if unit(pid, row):
+                    put(unit(pid, row), row[n], row[n + 1])
     for seen in out.values():  # anyone with a tracked event has opened the app, even without a page view
         seen.setdefault('visit', min(seen.values()))
     return {k: v for k, v in out.items()}
@@ -65,15 +91,32 @@ def users(days):
     return data
 
 
-def build(accounts, days, account_id=None):
-    """Funnel rows, journey Sankey and the people who stopped at each rung. account_id limits everything to one tracker account."""
+def sessions(days):
+    k = 'posthog-funnel-sessions-%d' % days
+    data = cache.get(k)
+    if data is None:
+        data = _users(days, sessions=True)
+        cache.set(k, data, 300)
+    return data
+
+
+def _journeys(data, by_domain):
+    out = []
+    for key, seen in data.items():
+        pid, email = key[0], key[1]
+        # journey: opening the app is always first, then the order each other step was first reached
+        order = ['visit'] + sorted((s for s in seen if s != 'visit'), key=lambda s: (seen[s], JOURNEY.index(s)))
+        out.append({'email': email, 'pid': pid, 'account': posthog.match_account(email, by_domain), 'path': order,
+                    'far': max(KEYS.index(s) for s in seen if s in KEYS)})
+    return out
+
+
+def build(accounts, days, account_id=None, by='users'):
+    """Funnel rows, journey Sankey and the people who stopped at each rung. account_id limits everything to one tracker account.
+    by='sessions' draws the Sankey with one path per visit instead of one per person; the bars stay per person."""
     by_domain = posthog.by_domain_of(accounts)
-    people = []
-    for (pid, email), seen in users(days).items():
-        acct = posthog.match_account(email, by_domain)
-        # journey: opening the app is always first, then the order each other rung was first reached
-        order = ['visit'] + sorted((s for s in seen if s != 'visit'), key=lambda s: (seen[s], KEYS.index(s)))
-        people.append({'email': email, 'pid': pid, 'account': acct, 'path': order, 'far': max(KEYS.index(s) for s in seen)})
+    people = _journeys(users(days), by_domain)
+    runs = _journeys(sessions(days), by_domain) if by == 'sessions' else people
     chips = Counter()  # who has users in the window, so the filter only offers companies with something to show
     for p in people:
         if p['account']:
@@ -82,6 +125,7 @@ def build(accounts, days, account_id=None):
     picked = next((a for a, _ in chips if a.pk == account_id), None)
     if picked:
         people = [p for p in people if p['account'] and p['account'].pk == picked.pk]
+        runs = [p for p in runs if p['account'] and p['account'].pk == picked.pk]
     total = len(people)
     reached = Counter()
     for p in people:
@@ -102,13 +146,13 @@ def build(accounts, days, account_id=None):
                      'who': [{'email': p['email'], 'name': p['account'].name if p['account'] else '', 'pid': p['pid'],
                               'project': PROJECTS.get(p['pid'], str(p['pid']))} for p in who[:10]], 'more': max(len(who) - 10, 0)})
     top_paths = Counter(' > '.join(LABEL[s] for s in p['path']) for p in people).most_common(8)
-    return {'chips': [{'pk': a.pk, 'name': a.name, 'logo_url': a.logo_url, 'n': n} for a, n in chips], 'picked': picked, 'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in people]) if total else None,
+    return {'chips': [{'pk': a.pk, 'name': a.name, 'logo_url': a.logo_url, 'n': n} for a, n in chips], 'picked': picked, 'total': total, 'rows': rows, 'top_paths': top_paths, 'sankey': sankey([p['path'] for p in runs], unit='session' if by == 'sessions' else 'user') if total and runs else None, 'by': by, 'n_runs': len(runs),
             'by_project': dict(Counter(PROJECTS.get(p['pid'], str(p['pid'])) for p in people))}
 
 
-def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=300):
+def sankey(paths, width=1560, height=520, node_w=14, pad=22, label_w=200, unit='user'):
     """Lay out a left-to-right journey Sankey. Column i is the i-th rung a user first reached; 'stop' is where their path ends."""
-    cols = len(KEYS)
+    cols = len(JOURNEY)
     links = Counter()
     nodes = Counter()
     for path in paths:
@@ -120,7 +164,7 @@ def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=300):
             nodes[(len(path), 'stop')] += 1
             links[((len(path) - 1, path[-1]), (len(path), 'stop'))] += 1
     n_users = len(paths)
-    order = KEYS + ['stop']
+    order = JOURNEY + ['stop']
     maxnodes = max(sum(1 for (c, _) in nodes if c == i) for i in range(cols))
     scale = (height - pad * (maxnodes - 1)) / n_users
     left = 16  # the last column's labels sit to its right, so it keeps label_w of room
@@ -144,7 +188,7 @@ def sankey(paths, width=1200, height=440, node_w=14, pad=20, label_w=300):
         x0, x1 = pa['x'] + node_w, pb['x']
         xm = (x0 + x1) / 2
         out_links.append({'d': 'M%.1f,%.1f C%.1f,%.1f %.1f,%.1f %.1f,%.1f' % (x0, y0, xm, y0, xm, y1, x1, y1), 'w': round(max(w, 0.8), 1),
-                          'step': b[1] if b[1] == 'stop' else a[1], 'title': '%s → %s: %d user%s' % (LABEL[a[1]], LABEL[b[1]], v, '' if v == 1 else 's')})
+                          'step': b[1] if b[1] == 'stop' else a[1], 'title': '%s → %s: %d %s%s' % (LABEL[a[1]], LABEL[b[1]], v, unit, '' if v == 1 else 's')})
     reached = Counter()
     for (c, _), n in nodes.items():
         reached[c] += n

@@ -1,0 +1,103 @@
+{% extends "app.html" %}
+{% load static %}
+{% block title %}{{ c.name }} · Outreach · Lunartree{% endblock %}
+{% block page_class %}page--outreach{% endblock %}
+{% block content %}
+<a class="back link-btn" href="{% url 'pipeline:outreach' %}">
+  <svg class="ico ico-16" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.75 8.25 12l6.25 6.25"/></svg>
+  Outreach
+</a>
+
+<header class="thesis-head ot__head">
+  <div>
+    <span class="ot__tag ot__tag--{{ c.tag }}">{{ c.tag_label }}</span>
+    <h1 class="t-h1">{{ c.name }}</h1>
+    <p class="t-body ot__briefline">{{ c.brief|default:"No brief yet." }}</p>
+    <p class="t-meta mono">{{ people|length }} people &middot; {{ steps|length }} step{{ steps|length|pluralize }}{% if total %} &middot; {{ ticks }} of {{ total }} done ({{ pct }}%){% endif %}</p>
+  </div>
+  <div class="ot__headacts">
+    <button type="button" class="btn btn--sm" data-ot-open="edit-campaign">Edit campaign</button>
+  </div>
+</header>
+
+<dialog class="ot__dlg" id="edit-campaign">
+  <form method="post" action="{% url 'pipeline:outreach_edit' c.pk %}" class="ot__form">
+    {% csrf_token %}
+    <h2 class="t-h3">Edit campaign</h2>
+    <label class="ot__lbl">Name<input class="field__input" name="name" value="{{ c.name }}" required maxlength="160"></label>
+    <label class="ot__lbl">Tag<select class="field__input field__input--plain field__select" name="tag">{% for k, l in tags %}<option value="{{ k }}" {% if c.tag == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+    <label class="ot__lbl">Brief<textarea class="field__input" name="brief" rows="4">{{ c.brief }}</textarea></label>
+    <div class="ot__actions">
+      <button type="submit" class="btn btn--sm ot__danger" formaction="{% url 'pipeline:outreach_delete' c.pk %}" onclick="return confirm('Delete this campaign, its steps and its audience?')">Delete campaign</button>
+      <span class="ot__spacer"></span>
+      <button type="button" class="btn btn--sm" data-ot-close>Cancel</button><button class="btn btn--primary btn--sm">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<section class="card ot__aud" aria-label="Audience">
+  <div class="uv__head"><h2 class="t-h3">Audience</h2><span class="t-meta">{{ people|length }} {{ people|length|pluralize:"person,people" }}</span></div>
+  {% if people %}
+  <div class="ot__bar" data-ot-bar hidden><span data-ot-n>0 changes</span> <span class="t-meta">not saved yet</span><button type="button" class="btn btn--sm" data-ot-discard>Discard</button><button type="button" class="btn btn--sm btn--primary" data-ot-save>Update</button></div>
+  <div class="usage__scroll"><table class="ot__table" data-ot-table data-url="{% url 'pipeline:outreach_toggle' c.pk %}">
+    <thead><tr>
+      <th class="ot__who">Person</th><th>Company</th><th>Reach</th>
+      {% for s in steps %}<th class="ot__col" title="{{ s.kind_label }}{% if s.subject %}: {{ s.subject }}{% endif %}"><span class="ot__colh ot__k--{{ s.kind }}">{% include "partials/step_icon.html" with kind=s.kind %}</span><span class="ot__coln">{{ forloop.counter }}. {{ s.kind_label }}</span><span class="t-meta mono" data-step-count="{{ s.pk }}">{{ s.n_done }}/{{ people|length }}</span></th>{% endfor %}
+      <th class="num">Done</th><th></th>
+    </tr></thead>
+    <tbody>{% for p in people %}<tr data-person="{{ p.pk }}">
+      <td class="ot__who"><strong>{{ p.name }}</strong>{% if p.title %}<br><span class="t-meta">{{ p.title }}</span>{% endif %}{% if p.note %}<br><span class="ot__pnote">{{ p.note }}</span>{% endif %}</td>
+      <td>{{ p.company }}</td>
+      <td class="ot__reach">
+        {% if p.linkedin_url %}<a class="btn btn--sm" href="{{ p.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+        {% if p.email %}<a class="btn btn--sm" href="mailto:{{ p.email }}">Email</a>{% endif %}
+        {% if p.tel %}<a class="btn btn--sm" href="tel:{{ p.tel }}" title="{{ p.phone }}">Call</a>{% endif %}
+      </td>
+      {% for cell in p.cells %}<td class="ot__cell{% if cell.on %} is-done{% endif %}"><button type="button" class="ot__tick" data-step="{{ cell.step.pk }}" aria-pressed="{% if cell.on %}true{% else %}false{% endif %}" aria-label="{{ cell.step.kind_label }}: {{ p.name }}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></td>{% endfor %}
+      <td class="num mono" data-person-count>{{ p.n_done }}/{{ steps|length }}</td>
+      <td class="nowrap"><details class="ot__pedit"><summary class="btn btn--sm">Edit</summary>
+        <form method="post" action="{% url 'pipeline:outreach_person' c.pk p.pk %}" class="ot__pform">{% csrf_token %}
+          <input class="field__input" name="name" value="{{ p.name }}" placeholder="Name" required>
+          <input class="field__input" name="title" value="{{ p.title }}" placeholder="Title">
+          <input class="field__input" name="company" value="{{ p.company }}" placeholder="Company">
+          <input class="field__input" name="email" value="{{ p.email }}" placeholder="Email">
+          <input class="field__input" name="phone" value="{{ p.phone }}" placeholder="Phone">
+          <input class="field__input" name="linkedin_url" value="{{ p.linkedin_url }}" placeholder="LinkedIn URL">
+          <textarea class="field__input" name="note" rows="3" placeholder="Note">{{ p.note }}</textarea>
+          <div class="ot__actions"><button class="btn btn--primary btn--sm">Save</button><button class="btn btn--sm ot__danger" formaction="{% url 'pipeline:outreach_person_delete' c.pk p.pk %}" onclick="return confirm('Remove {{ p.name|escapejs }} from this campaign?')">Remove</button></div>
+        </form></details></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="t-body">No one in this audience yet.</p>{% endif %}
+
+  <details class="ot__add"{% if not people %} open{% endif %}><summary class="btn btn--sm">Add people</summary>
+    <form method="post" action="{% url 'pipeline:outreach_people' c.pk %}" class="ot__form">{% csrf_token %}
+      <label class="ot__lbl">One person per line: Name | Title | Company | email | LinkedIn URL | phone <span class="t-meta">(email, LinkedIn and phone are picked out wherever they appear)</span>
+        <textarea class="field__input" name="people" rows="5" placeholder="Jane Doe | Director, BD | Acme Bio | jane@acme.com | linkedin.com/in/janedoe"></textarea></label>
+      <div class="ot__actions"><button class="btn btn--primary btn--sm">Add to audience</button></div>
+    </form>
+  </details>
+</section>
+<section class="card ot__steps" aria-label="Steps">
+  <div class="uv__head"><h2 class="t-h3">Steps</h2><span class="t-meta">Each step becomes a column below. Tick it for a person once it is done.</span></div>
+  <ol class="ot__steplist">
+    {% for s in steps %}<li class="ot__step">
+      <span class="ot__stepico ot__k--{{ s.kind }}">{% include "partials/step_icon.html" with kind=s.kind %}</span>
+      <div class="ot__stepbody">
+        <div class="ot__steptitle"><strong>{{ forloop.counter }}. {{ s.kind_label }}</strong>{% if s.subject %}<span class="ot__subj">{{ s.subject }}</span>{% endif %}{% if s.wait_days %}<span class="t-meta">after {{ s.wait_days }} day{{ s.wait_days|pluralize }}</span>{% endif %}<span class="t-meta mono ot__stepn">{{ s.n_done }}/{{ people|length }}</span></div>
+        {% if s.note %}<details class="ot__note"><summary>{{ s.note|truncatechars:110 }}</summary><div class="ot__copy"><pre>{{ s.note }}</pre><button type="button" class="btn btn--sm" data-ot-copy>Copy</button></div></details>{% endif %}
+        <details class="ot__edit"><summary class="t-meta">Edit</summary>
+          {% include "pipeline/_outreach_step_form.html" with step=s %}
+          <div class="ot__stepacts">
+            <form method="post" action="{% url 'pipeline:outreach_step_move' c.pk s.pk %}">{% csrf_token %}<button class="btn btn--sm" name="dir" value="up" {% if forloop.first %}disabled{% endif %}>Move up</button> <button class="btn btn--sm" name="dir" value="down" {% if forloop.last %}disabled{% endif %}>Move down</button></form>
+            <form method="post" action="{% url 'pipeline:outreach_step_delete' c.pk s.pk %}" onsubmit="return confirm('Delete this step? Its ticks go too.')">{% csrf_token %}<button class="btn btn--sm ot__danger">Delete step</button></form>
+          </div>
+        </details>
+      </div>
+    </li>{% empty %}<li class="t-meta">No steps yet. Add the first one below.</li>{% endfor %}
+  </ol>
+  <details class="ot__add"{% if not steps %} open{% endif %}><summary class="btn btn--sm">Add step</summary>{% include "pipeline/_outreach_step_form.html" with step=None %}</details>
+</section>
+
+<script src="{% static 'js/outreach.js' %}" defer></script>
+{% endblock %}

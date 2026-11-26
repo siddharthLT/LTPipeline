@@ -13,3 +13,4 @@ pipeline/management/commands/seed_*.py
 *buying thesis.html
 biolens-dashboard-prod.html
 client_account_status*.md
+pipeline/seeds/

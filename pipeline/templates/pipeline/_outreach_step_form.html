@@ -1,0 +1,10 @@
+<form method="post" action="{% url 'pipeline:outreach_step' c.pk %}" class="ot__form ot__stepform">{% csrf_token %}
+  {% if step %}<input type="hidden" name="step" value="{{ step.pk }}">{% endif %}
+  <div class="ot__row">
+    <label class="ot__lbl">Step type<select class="field__input field__input--plain field__select" name="kind" data-ot-kind>{% for k, l in kinds %}<option value="{{ k }}" {% if step.kind == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+    <label class="ot__lbl ot__lbl--sm">Wait (days)<input class="field__input" type="number" min="0" name="wait_days" value="{{ step.wait_days|default:0 }}"></label>
+  </div>
+  <label class="ot__lbl" data-ot-subject>Subject line<input class="field__input" name="subject" value="{{ step.subject }}" maxlength="300"></label>
+  <label class="ot__lbl">Task note<textarea class="field__input" name="note" rows="5" placeholder="What to do, or the copy to send">{{ step.note }}</textarea></label>
+  <div class="ot__actions"><button class="btn btn--primary btn--sm">{% if step %}Save step{% else %}Add step{% endif %}</button></div>
+</form>

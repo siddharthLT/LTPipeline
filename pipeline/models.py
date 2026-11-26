@@ -526,3 +526,68 @@ class UsageInsight(models.Model):
 
     def __str__(self):
         return '%s (%dd)' % (self.tab, self.days)
+
+
+class Campaign(models.Model):
+    """An outreach campaign: an audience, a short brief and an ordered list of steps to tick off per person."""
+    TAGS = [('gtm', 'GTM / CS'), ('hiring', 'Hiring outreach')]
+    name = models.CharField(max_length=160)
+    tag = models.CharField(max_length=10, choices=TAGS, default='gtm')
+    brief = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['tag', 'created_at', 'pk']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def tag_label(self):
+        return dict(self.TAGS).get(self.tag, self.tag)
+
+
+class CampaignStep(models.Model):
+    KINDS = [('li_connect', 'LinkedIn Connect Request'), ('li_dm', 'LinkedIn DM'), ('email', 'Email'), ('call', 'Call'), ('other', 'Other Manual task')]
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='steps')
+    position = models.PositiveSmallIntegerField(default=0)
+    kind = models.CharField(max_length=12, choices=KINDS, default='email')
+    subject = models.CharField(max_length=300, blank=True)  # email steps: the subject line
+    note = models.TextField(blank=True)  # the task note; for an email, its copy
+    wait_days = models.PositiveSmallIntegerField(default=0)  # days after the step before
+
+    class Meta:
+        ordering = ['position', 'pk']
+
+    @property
+    def kind_label(self):
+        return dict(self.KINDS).get(self.kind, self.kind)
+
+
+class CampaignPerson(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='people')
+    position = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=160)
+    title = models.CharField(max_length=300, blank=True)
+    company = models.CharField(max_length=160, blank=True)
+    email = models.CharField(max_length=254, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    linkedin_url = models.URLField(max_length=500, blank=True)
+    note = models.TextField(blank=True)
+    done = models.ManyToManyField(CampaignStep, through='StepDone', related_name='done_by')
+
+    class Meta:
+        ordering = ['position', 'pk']
+
+    @property
+    def tel(self):
+        return re.sub(r'[^\d+]', '', self.phone)
+
+
+class StepDone(models.Model):
+    person = models.ForeignKey(CampaignPerson, on_delete=models.CASCADE)
+    step = models.ForeignKey(CampaignStep, on_delete=models.CASCADE)
+    done_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('person', 'step')]

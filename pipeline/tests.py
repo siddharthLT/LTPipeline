@@ -581,6 +581,22 @@ class FunnelTests(TestCase):
             self.assertTrue(f['sankey']['links'])
             self.assertEqual(f['total'], 3)
 
+    def test_sankey_by_sessions_counts_visits_not_people(self):
+        from datetime import datetime
+        from unittest import mock
+        from . import funnel
+        t = lambda m: datetime(2026, 1, 1, 0, m)
+        people = {(234813, 'a@x.com'): {'visit': t(0), 'home': t(0), 'look': t(1)}}
+        visits = {(234813, 'a@x.com', 's1'): {'visit': t(0), 'home': t(0)},
+                  (234813, 'a@x.com', 's2'): {'visit': t(5), 'look': t(6)}}
+        with mock.patch.object(funnel, 'users', return_value=people), mock.patch.object(funnel, 'sessions', return_value=visits):
+            by_user = funnel.build([], 30)
+            by_visit = funnel.build([], 30, by='sessions')
+        self.assertEqual(by_user['sankey']['nodes'][0]['n'], 1)
+        self.assertEqual(by_visit['sankey']['nodes'][0]['n'], 2)
+        self.assertEqual(by_visit['total'], 1)  # the bars stay per person
+        self.assertIn('Opened Homepage', {n['label'] for n in by_visit['sankey']['nodes']})
+
     def test_build_filters_to_one_account(self):
         from datetime import datetime
         from unittest import mock
@@ -869,3 +885,75 @@ class UsageInsightTests(Base):
         self.assertEqual([e['t'] for e in evs], ['reset', 'delta', 'done'])
         self.assertEqual(evs[-1]['provider'], 'Groq')
         self.assertEqual(len(calls), 2)
+
+
+class OutreachTests(Base):
+    def test_campaign_flow_and_ticks(self):
+        from .models import Campaign, CampaignPerson, CampaignStep, StepDone
+        r = self.client.post(reverse('pipeline:outreach_create'), {'name': 'PEGS follow-ups', 'tag': 'hiring', 'brief': 'Say hi'})
+        c = Campaign.objects.get(name='PEGS follow-ups')
+        self.assertRedirects(r, reverse('pipeline:outreach_detail', args=[c.pk]))
+        self.assertEqual((c.tag, c.tag_label), ('hiring', 'Hiring outreach'))
+        for kind in ('li_connect', 'email', 'bogus'):
+            self.client.post(reverse('pipeline:outreach_step', args=[c.pk]), {'kind': kind, 'subject': 'Hello', 'note': 'Copy here', 'wait_days': '2'})
+        steps = list(c.steps.all())
+        self.assertEqual([s.kind for s in steps], ['li_connect', 'email'])  # an unknown kind is ignored
+        self.assertEqual(steps[0].subject, '')  # only email steps keep a subject
+        self.assertEqual(steps[1].subject, 'Hello')
+        self.client.post(reverse('pipeline:outreach_people', args=[c.pk]),
+                         {'people': 'Jane Doe | Director, BD | Acme Bio | jane@acme.com | linkedin.com/in/jane | +1 555 123 4567\nSolo Name\n\n'})
+        jane = c.people.get(name='Jane Doe')
+        self.assertEqual((jane.title, jane.company, jane.email, jane.linkedin_url, jane.phone),
+                         ('Director, BD', 'Acme Bio', 'jane@acme.com', 'https://linkedin.com/in/jane', '+1 555 123 4567'))
+        self.assertEqual(c.people.count(), 2)
+        url = reverse('pipeline:outreach_toggle', args=[c.pk])
+        import json
+        r = self.client.post(url, {'changes': json.dumps([{'person': jane.pk, 'step': steps[0].pk, 'on': True},
+                                                          {'person': jane.pk, 'step': steps[1].pk, 'on': True}])})
+        self.assertEqual(r.json(), {'saved': 2})
+        self.assertEqual(StepDone.objects.count(), 2)
+        page = self.client.get(reverse('pipeline:outreach_detail', args=[c.pk]))
+        self.assertContains(page, 'is-done')
+        self.assertContains(page, 'LinkedIn Connect Request')
+        self.assertContains(page, 'href="mailto:jane@acme.com"')
+        self.assertContains(page, 'href="tel:+15551234567"')
+        self.client.post(url, {'changes': json.dumps([{'person': jane.pk, 'step': steps[0].pk, 'on': False},
+                                                      {'person': jane.pk, 'step': steps[1].pk, 'on': False}])})
+        self.assertFalse(StepDone.objects.exists())
+        other = Campaign.objects.create(name='Other')
+        foreign = CampaignStep.objects.create(campaign=other, kind='call')
+        self.client.post(url, {'changes': json.dumps([{'person': jane.pk, 'step': foreign.pk, 'on': True}])})  # a step from another campaign
+        self.assertFalse(StepDone.objects.exists())
+        self.client.post(reverse('pipeline:outreach_step_move', args=[c.pk, steps[1].pk]), {'dir': 'up'})
+        self.assertEqual([s.kind for s in c.steps.all()], ['email', 'li_connect'])
+        lst = self.client.get(reverse('pipeline:outreach') + '?tag=hiring')
+        self.assertContains(lst, 'PEGS follow-ups')
+        self.assertNotContains(lst, 'class="t-h3 ot__name">Other')
+        self.client.post(reverse('pipeline:outreach_delete', args=[c.pk]))
+        self.assertFalse(CampaignPerson.objects.filter(campaign_id=c.pk).exists())
+
+    def test_seed_preloads_the_campaigns_and_is_safe_to_rerun(self):
+        from django.core.management import CommandError, call_command
+        from .models import Campaign
+        try:  # seed_* commands and the people they load are kept out of git, so a clean checkout does not have them
+            call_command('seed_outreach', stdout=__import__('io').StringIO())
+        except CommandError:
+            self.skipTest('seed_outreach is not in this checkout')
+        call_command('seed_outreach', stdout=__import__('io').StringIO())
+        by = {c.name: c for c in Campaign.objects.all()}
+        self.assertEqual(len(by), 11)
+        ddf = by['DDF Summit follow-up']
+        self.assertEqual((ddf.steps.count(), ddf.people.count(), ddf.tag), (7, 18, 'gtm'))
+        self.assertIn('great meeting you at DDF Summit', ddf.steps.first().subject)
+        self.assertEqual(by['Bioprocessing Summit follow-up'].people.count(), 42)
+        self.assertEqual(by['CDMO Live follow-up'].people.count(), 20)
+        self.assertEqual(by['Contract Pharma follow-up'].people.count(), 16)
+        adv = by['Advisor follow-ups']
+        self.assertEqual(adv.people.count(), 14)
+        self.assertTrue(adv.people.get(name='Rob Rigney').email)
+        self.assertEqual(by['How to use Guides'].people.count(), 157)
+        self.assertEqual({p.company for p in by['Demo stats + extended access outreach'].people.all()}, {'Apoha'})
+        self.assertEqual(sorted(c.tag for c in by.values()).count('hiring'), 4)
+        ddf.people.first().delete()
+        call_command('seed_outreach', stdout=__import__('io').StringIO())
+        self.assertEqual(ddf.people.count(), 17)  # a campaign with content is not reseeded

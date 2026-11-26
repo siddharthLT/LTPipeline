@@ -14,7 +14,21 @@ usage_urls = [
     path('usage/insights/', views.usage_insights, name='usage_insights'),
 ]
 
+from . import outreach_views as ov
+
 pipeline_urls = [
+    path('outreach/', ov.outreach_list, name='outreach'),
+    path('outreach/new/', ov.outreach_create, name='outreach_create'),
+    path('outreach/<int:pk>/', ov.outreach_detail, name='outreach_detail'),
+    path('outreach/<int:pk>/edit/', ov.outreach_edit, name='outreach_edit'),
+    path('outreach/<int:pk>/delete/', ov.outreach_delete, name='outreach_delete'),
+    path('outreach/<int:pk>/step/', ov.step_save, name='outreach_step'),
+    path('outreach/<int:pk>/step/<int:step_id>/delete/', ov.step_delete, name='outreach_step_delete'),
+    path('outreach/<int:pk>/step/<int:step_id>/move/', ov.step_move, name='outreach_step_move'),
+    path('outreach/<int:pk>/people/', ov.people_add, name='outreach_people'),
+    path('outreach/<int:pk>/person/<int:person_id>/', ov.person_save, name='outreach_person'),
+    path('outreach/<int:pk>/person/<int:person_id>/delete/', ov.person_delete, name='outreach_person_delete'),
+    path('outreach/<int:pk>/toggle/', ov.outreach_toggle, name='outreach_toggle'),
     path('', views.dashboard, name='dashboard'),
     path('search.json', views.search_index, name='search'),
     path('hand-raisers/', views.hand_raisers, name='hand_raisers'),

@@ -1,0 +1,43 @@
+{% extends "app.html" %}
+{% load static %}
+{% block title %}Outreach · Lunartree{% endblock %}
+{% block page_class %}page--outreach{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Outreach</span>
+  <h1 class="t-h1">Campaigns</h1>
+  <p class="t-meta">Each campaign has an audience, a short brief and a few steps. Tick a step for a person once it is done.</p>
+</header>
+
+<div class="usage__bar">
+  <nav class="seg" aria-label="Filter by tag">
+    <a class="seg__item" href="?" {% if not tag %}aria-pressed="true"{% endif %}>All <span class="seg__count">{{ all_count }}</span></a>
+    {% for k, label, n in tags %}<a class="seg__item" href="?tag={{ k }}" {% if tag == k %}aria-pressed="true"{% endif %}>{{ label }} <span class="seg__count">{{ n }}</span></a>{% endfor %}
+  </nav>
+  <button type="button" class="btn btn--primary btn--sm" data-ot-open="new-campaign">New campaign</button>
+</div>
+
+<dialog class="ot__dlg" id="new-campaign">
+  <form method="post" action="{% url 'pipeline:outreach_create' %}" class="ot__form">
+    {% csrf_token %}
+    <h2 class="t-h3">New campaign</h2>
+    <label class="ot__lbl">Name<input class="field__input" name="name" required maxlength="160" placeholder="e.g. PEGS follow-ups"></label>
+    <label class="ot__lbl">Tag<select class="field__input field__input--plain field__select" name="tag">{% for k, l in choices %}<option value="{{ k }}">{{ l }}</option>{% endfor %}</select></label>
+    <label class="ot__lbl">Brief<textarea class="field__input" name="brief" rows="3" placeholder="What this campaign is about, in a line or two"></textarea></label>
+    <div class="ot__actions"><button type="button" class="btn btn--sm" data-ot-close>Cancel</button><button class="btn btn--primary btn--sm">Create</button></div>
+  </form>
+</dialog>
+
+<section class="ot__grid">
+  {% for x in cards %}{% with c=x.c %}
+  <a class="card ot__card" href="{% url 'pipeline:outreach_detail' c.pk %}">
+    <div class="ot__cardtop"><span class="ot__tag ot__tag--{{ c.tag }}">{{ c.tag_label }}</span><span class="t-meta mono">{{ c.n_people }} people &middot; {{ c.n_steps }} step{{ c.n_steps|pluralize }}</span></div>
+    <h2 class="t-h3 ot__name">{{ c.name }}</h2>
+    <p class="t-body ot__brief">{{ c.brief|default:"No brief yet." }}</p>
+    <div class="ot__prog" role="img" aria-label="{{ x.pct }} percent of steps done"><i style="width: {{ x.pct }}%"></i></div>
+    <span class="t-meta mono">{{ x.ticks }} of {{ x.total }} steps done{% if x.total %} &middot; {{ x.pct }}%{% endif %}</span>
+  </a>
+  {% endwith %}{% empty %}<p class="card t-body ot__none">No campaigns yet. Create one to get started.</p>{% endfor %}
+</section>
+<script src="{% static 'js/outreach.js' %}" defer></script>
+{% endblock %}

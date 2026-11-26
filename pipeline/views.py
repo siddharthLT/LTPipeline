@@ -453,7 +453,7 @@ def usage(request):
                 pick = int(request.GET.get('account', ''))
             except ValueError:
                 pick = None
-            ctx.update(funnel=funnel.build(accounts, days, pick))
+            ctx.update(funnel=funnel.build(accounts, days, pick, by='sessions' if request.GET.get('by') == 'sessions' else 'users'))
     except posthog.NotConfigured as e:
         ctx['error'] = str(e)
     except Exception as e:  # network or PostHog errors should not break the page

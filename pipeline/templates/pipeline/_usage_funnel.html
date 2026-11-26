@@ -2,10 +2,10 @@
 <section class="fn">
   <div class="fn__filters">
     <span class="t-meta">{% if f.picked %}<strong>{{ f.picked.name }}</strong> &middot; {% endif %}{{ f.total }} user{{ f.total|pluralize }}{% for name, n in f.by_project.items %} &middot; {{ name }} {{ n }}{% endfor %}</span>
-    {% if f.picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=funnel">Reset</a>{% endif %}
+    {% if f.picked %}<a class="btn btn--sm" href="?days={{ days }}&tab=funnel{% if f.by == 'sessions' %}&by=sessions{% endif %}">Reset</a>{% endif %}
   </div>
   {% if f.chips %}<nav class="fn__chips" aria-label="Show one company">
-    {% for c in f.chips %}<a class="fn__chip" href="?days={{ days }}&tab=funnel&account={{ c.pk }}" {% if f.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
+    {% for c in f.chips %}<a class="fn__chip" href="?days={{ days }}&tab=funnel&account={{ c.pk }}{% if f.by == 'sessions' %}&by=sessions{% endif %}" {% if f.picked.pk == c.pk %}aria-pressed="true"{% endif %}>{% include "partials/logo.html" with url=c.logo_url name=c.name small=True %}{{ c.name }} <span class="fn__chipn">{{ c.n }}</span></a>{% endfor %}
   </nav>{% endif %}
 
   {% if not f.total %}
@@ -24,17 +24,22 @@
   </div>
 
   <div class="card fn__card">
-    <div class="uv__head"><h2 class="t-h3">The paths people take</h2><span class="t-meta">Columns are the order each user first reached a step. A grey bar is where their path ended.</span></div>
-    {% with s=f.sankey %}
+    <div class="uv__head"><h2 class="t-h3">The paths people take</h2><span class="t-meta">Columns are the order each {% if f.by == 'sessions' %}visit (session){% else %}user{% endif %} first reached a step. "Opened Homepage", "Viewed a Workspace" and "Checked Insights" come from page views and appear only here, not in the bars above. A grey bar is where their path ended.</span>
+      <nav class="fn__chips" aria-label="Count people or sessions">
+        <a class="fn__chip" href="?days={{ days }}&tab=funnel{% if f.picked %}&account={{ f.picked.pk }}{% endif %}" {% if f.by != 'sessions' %}aria-pressed="true"{% endif %}>By users <span class="t-meta">{{ f.total }}</span></a>
+        <a class="fn__chip" href="?days={{ days }}&tab=funnel{% if f.picked %}&account={{ f.picked.pk }}{% endif %}&by=sessions" {% if f.by == 'sessions' %}aria-pressed="true"{% endif %}>By sessions{% if f.by == 'sessions' %} <span class="t-meta">{{ f.n_runs }}</span>{% endif %}</a>
+      </nav>
+    </div>
+    {% with s=f.sankey %}{% if s %}
     <div class="fns__wrap"><svg class="fns" viewBox="0 0 {{ s.w }} {{ s.h|add:30 }}" role="img" aria-label="Journey Sankey from opening BioLens to outreach">
       {% for h in s.heads %}<text class="fns__head" x="{{ h.x }}" y="14" text-anchor="start">{{ h.text }}</text>{% endfor %}
       <g transform="translate(0 24)">
         {% for l in s.links %}<path class="fns__link fns--{{ l.step }}" d="{{ l.d }}" stroke-width="{{ l.w }}"><title>{{ l.title }}</title></path>{% endfor %}
         {% for n in s.nodes %}<rect class="fns__node fns--{{ n.step }}" x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}"><title>{{ n.label }}: {{ n.n }}{% if n.drop is not None %} ({{ n.drop }}% drop off){% endif %}</title></rect>
-        <text class="fns__lbl" x="{{ n.tx }}" y="{{ n.ty }}" dy="0.35em">{{ n.label }} <tspan class="fns__num">{{ n.n }}</tspan>{% if n.drop is not None %}<tspan class="fns__drop"> · {{ n.drop }}% drop off</tspan>{% endif %}</text>{% endfor %}
+        <text class="fns__lbl" x="{{ n.tx }}" y="{{ n.ty }}"><tspan x="{{ n.tx }}" dy="-0.15em">{{ n.label }}</tspan><tspan class="fns__num" x="{{ n.tx }}" dy="1.25em">{{ n.n }}</tspan>{% if n.drop is not None %}<tspan class="fns__drop"> · {{ n.drop }}% drop off</tspan>{% endif %}</text>{% endfor %}
       </g>
     </svg></div>
-    {% endwith %}
+    {% else %}<p class="t-meta">No sessions in this window for that selection.</p>{% endif %}{% endwith %}
   </div>
 
   <div class="card fn__card">
