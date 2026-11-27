@@ -14,6 +14,7 @@ usage_urls = [
     path('usage/insights/', views.usage_insights, name='usage_insights'),
 ]
 
+from . import doc_views as dv
 from . import outreach_views as ov
 
 pipeline_urls = [
@@ -29,6 +30,11 @@ pipeline_urls = [
     path('outreach/<int:pk>/person/<int:person_id>/', ov.person_save, name='outreach_person'),
     path('outreach/<int:pk>/person/<int:person_id>/delete/', ov.person_delete, name='outreach_person_delete'),
     path('outreach/<int:pk>/toggle/', ov.outreach_toggle, name='outreach_toggle'),
+    path('docs/', dv.doc_list, name='docs'),
+    path('docs/new/', dv.doc_create, name='doc_create'),
+    path('docs/<int:pk>/', dv.doc_view, name='doc_view'),
+    path('docs/<int:pk>/raw/', dv.doc_raw, name='doc_raw'),
+    path('docs/<int:pk>/delete/', dv.doc_delete, name='doc_delete'),
     path('digest/cron/', views.digest_cron, name='digest_cron'),
     path('', views.dashboard, name='dashboard'),
     path('search.json', views.search_index, name='search'),

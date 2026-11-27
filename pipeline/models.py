@@ -605,3 +605,18 @@ class DigestRecipient(models.Model):
 
     def __str__(self):
         return self.email
+
+
+class InternalDoc(models.Model):
+    """An internal HTML document (plan, playbook, brief) kept in the tracker and shown as a file under Internal Docs."""
+    title = models.CharField(max_length=200)
+    note = models.CharField(max_length=300, blank=True, help_text='One line about what this is')
+    html = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+
+    def __str__(self):
+        return self.title

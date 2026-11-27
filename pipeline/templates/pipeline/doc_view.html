@@ -1,0 +1,14 @@
+{% extends "app.html" %}
+{% block title %}{{ doc.title }} · Internal Docs{% endblock %}
+{% block page_class %}page--docs page--docview{% endblock %}
+{% block content %}
+<div class="docv__bar">
+  <a class="btn btn--sm" href="{% url 'pipeline:docs' %}">&larr; Internal Docs</a>
+  <h1 class="t-h3 docv__title">{{ doc.title }}</h1>
+  <span class="docv__actions">
+    <a class="btn btn--sm" href="{% url 'pipeline:doc_raw' doc.pk %}" target="_blank" rel="noopener">Open in a new tab</a>
+    <form method="post" action="{% url 'pipeline:doc_delete' doc.pk %}" onsubmit="return confirm('Delete this doc?')">{% csrf_token %}<button class="btn btn--sm btn--danger">Delete</button></form>
+  </span>
+</div>
+<iframe class="docv__frame" src="{% url 'pipeline:doc_raw' doc.pk %}" title="{{ doc.title }}"></iframe>
+{% endblock %}

@@ -1007,3 +1007,38 @@ class DigestEmailTests(Base):
             r = self.client.get(url, HTTP_AUTHORIZATION='Bearer s3cret')
             self.assertEqual((r.status_code, r.json()['sent']), (200, ['a@x.com']))
             self.assertEqual(send.call_count, 1)
+
+
+class InternalDocTests(Base):
+    def test_upload_view_sandbox_and_delete(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import InternalDoc
+        page = '<!doctype html><title>x</title><h1>Plan body</h1><script>1</script>'
+        r = self.client.post(reverse('pipeline:doc_create'), {'file': SimpleUploadedFile('My plan.html', page.encode()), 'note': 'a line'})
+        doc = InternalDoc.objects.get()
+        self.assertRedirects(r, reverse('pipeline:doc_view', args=[doc.pk]))
+        self.assertEqual((doc.title, doc.note), ('My plan', 'a line'))  # the title falls back to the file name
+        lst = self.client.get(reverse('pipeline:docs'))
+        self.assertContains(lst, 'My plan')
+        self.assertContains(lst, 'doc__file')
+        self.assertContains(self.client.get(reverse('pipeline:doc_view', args=[doc.pk])), reverse('pipeline:doc_raw', args=[doc.pk]))
+        raw = self.client.get(reverse('pipeline:doc_raw', args=[doc.pk]))
+        self.assertContains(raw, 'Plan body')
+        self.assertIn('sandbox allow-scripts', raw['Content-Security-Policy'])  # the doc cannot reach our cookies
+        self.assertEqual(self.client.post(reverse('pipeline:doc_create'), {'title': 'Empty'}).status_code, 302)
+        self.assertEqual(InternalDoc.objects.count(), 1)  # nothing to save without HTML
+        self.client.post(reverse('pipeline:doc_delete', args=[doc.pk]))
+        self.assertFalse(InternalDoc.objects.exists())
+
+
+class EmailAliasTests(TestCase):
+    def test_a_personal_address_can_be_tied_to_an_account(self):
+        from unittest import mock
+        from . import posthog
+        neuland = Account.objects.create(name='Neuland', domain='neulandlabs.com')
+        by_domain = posthog.by_domain_of([neuland])
+        self.assertIsNone(posthog.match_account('person@gmail.com', by_domain))
+        with mock.patch.dict(posthog.EMAIL_ALIASES, {'person@gmail.com': 'neulandlabs.com'}):
+            self.assertEqual(posthog.match_account('person@gmail.com', by_domain), neuland)
+            self.assertEqual(posthog.match_account('Person@Gmail.com', by_domain), neuland)  # case does not matter
+            self.assertIsNone(posthog.match_account('someone.else@gmail.com', by_domain))  # other gmail users stay unmatched

@@ -1,0 +1,45 @@
+{% extends "app.html" %}
+{% load static %}
+{% block title %}Internal Docs · Lunartree{% endblock %}
+{% block page_class %}page--docs{% endblock %}
+{% block content %}
+<header class="thesis-head">
+  <span class="eyebrow">Internal Docs</span>
+  <h1 class="t-h1">Internal Docs</h1>
+  <p class="t-meta">Plans and playbooks kept as HTML. Open a file to read it here.</p>
+</header>
+
+<div class="usage__bar">
+  <span class="t-meta">{{ docs|length }} file{{ docs|length|pluralize }}</span>
+  <button type="button" class="btn btn--primary btn--sm" data-ot-open="new-doc">Add a doc</button>
+</div>
+{% if error %}<p class="t-meta doc__error" role="alert">{{ error }}</p>{% endif %}
+
+<dialog class="ot__dlg" id="new-doc">
+  <form method="post" action="{% url 'pipeline:doc_create' %}" class="ot__form" enctype="multipart/form-data">
+    {% csrf_token %}
+    <h2 class="t-h3">Add a doc</h2>
+    <label class="ot__lbl">HTML file<input class="field__input" type="file" name="file" accept=".html,.htm,text/html"></label>
+    <label class="ot__lbl">Title <span class="t-meta">(optional with a file: it takes the file name)</span><input class="field__input" name="title" maxlength="200" placeholder="e.g. Stevanato Phase 1 plan"></label>
+    <label class="ot__lbl">One line about it<input class="field__input" name="note" maxlength="300"></label>
+    <label class="ot__lbl">Or paste the HTML<textarea class="field__input" name="html" rows="4" placeholder="&lt;!doctype html&gt;…"></textarea></label>
+    <div class="ot__actions"><button type="button" class="btn btn--sm" data-ot-close>Cancel</button><button class="btn btn--primary btn--sm">Add</button></div>
+  </form>
+</dialog>
+
+{% if docs %}
+<div class="doc__grid">
+  {% for d in docs %}<a class="doc__file" href="{% url 'pipeline:doc_view' d.pk %}">
+    <span class="doc__icon" aria-hidden="true">
+      <svg viewBox="0 0 48 60" width="64" height="80"><path d="M4 4a4 4 0 0 1 4-4h22l14 14v42a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z" class="doc__paper"/><path d="M30 0v10a4 4 0 0 0 4 4h10" class="doc__fold"/><text x="24" y="43" text-anchor="middle" class="doc__ext">HTML</text></svg>
+    </span>
+    <span class="doc__name">{{ d.title }}</span>
+    {% if d.note %}<span class="t-meta doc__note">{{ d.note }}</span>{% endif %}
+    <span class="t-meta doc__date">Updated {{ d.updated_at|date:"M j, Y" }}</span>
+  </a>{% endfor %}
+</div>
+{% else %}
+<div class="card"><p class="t-body">No docs yet. Add an HTML file and it shows up here as a file.</p></div>
+{% endif %}
+<script src="{% static 'js/outreach.js' %}" defer></script>
+{% endblock %}

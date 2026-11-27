@@ -1222,3 +1222,22 @@ a.chip, a.chip:hover { text-decoration: none; }
 
 .ot__bar { position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; gap: 10px; justify-content: flex-end; padding: 10px 14px; margin-bottom: 10px; background: var(--canvas); border: 1px solid var(--ink-ctl); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
 .ot__bar[hidden] { display: none; }
+
+/* Internal Docs: HTML files shown as file icons, opened in a framed viewer */
+.page.page--docs { max-width: none; }
+.doc__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--s-4); margin-top: var(--s-4); }
+.doc__file, .doc__file:hover { display: flex; flex-direction: column; align-items: center; gap: var(--s-2); padding: var(--s-5) var(--s-4) var(--s-4); text-align: center; color: inherit; text-decoration: none; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--canvas); transition: border-color var(--d-1), box-shadow var(--d-2), transform var(--d-2) var(--ease); }
+.doc__file:hover { border-color: var(--teal-deep); box-shadow: var(--sh-2); transform: translateY(-2px); }
+.doc__icon { display: grid; place-items: center; }
+.doc__paper { fill: var(--teal-50); stroke: var(--teal-deep); stroke-width: 1.6; }
+.doc__fold { fill: var(--teal-200); stroke: var(--teal-deep); stroke-width: 1.6; stroke-linejoin: round; }
+.doc__ext { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--teal-deep); letter-spacing: .08em; }
+.doc__name { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.doc__note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.doc__date { font-size: var(--fs-micro); color: var(--ink-3); }
+.doc__error { color: #A23B00; margin: var(--s-2) 0; }
+.docv__bar { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); flex-wrap: wrap; }
+.docv__title { flex: 1; min-width: 0; }
+.docv__actions { display: flex; align-items: center; gap: var(--s-2); }
+.docv__actions form { margin: 0; }
+.docv__frame { display: block; width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--canvas); }

@@ -39,6 +39,9 @@ AI_EVENTS = ['chat:response_received', 'chat:user_message_submit']
 # Extra email domains that belong to a tracker account (domain on the account is matched automatically).
 ALIASES = {'tenshi.co.in': 'insta-pill.com', 'arcolab.com': 'insta-pill.com', 'synthegoreagents.com': 'synthego.com', 'shilpabio.com': 'shilpa.com'}
 
+# Single personal addresses that belong to a tracker account (value is the account's domain).
+EMAIL_ALIASES = {}  # e.g. {'name@gmail.com': 'acme.com'}
+
 
 class NotConfigured(Exception):
     pass
@@ -148,7 +151,7 @@ def domain_of(email):
 
 
 def match_account(email, by_domain):
-    d = domain_of(email)
+    d = EMAIL_ALIASES.get((email or '').lower()) or domain_of(email)
     d = ALIASES.get(d, d)
     if d in by_domain:
         return by_domain[d]
